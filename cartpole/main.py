@@ -26,11 +26,12 @@ if __name__ == "__main__":
         reward_hist.append(total_reward)
         plt.figure(1)
         plt.clf()
-        plt.title('Training... eps: ' + str(round(epsilon, 2)))
+        plt.title('Training... eps: ' + str(round(epsilon, 3)))
         plt.xlabel('Episode')
         plt.ylabel('Total reward')
         plt.plot(reward_hist)
-        epsilon -= (epsilon > MINIMAL_EPSILON) * EPSILON_ANNEALING_STEP
+        if epsilon > MINIMAL_EPSILON:
+            epsilon -= EPSILON_ANNEALING_STEP
     env.close()
     plt.title('Done')
     plt.ioff()

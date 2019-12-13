@@ -43,12 +43,11 @@ class Agent():
 
     def run_episode(self, epsilon, update_target_net = False):
         state = self._env.reset()
-        state = torch.tensor(state).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
         total_reward = 0
         terminal = False
         while(not terminal):
             self._env.render()
-            # https://www.toptal.com/deep-learning/pytorch-reinforcement-learning-tutorial
             # Get output from nn
             with torch.no_grad():
                 output = self._policy_net(state)
@@ -58,18 +57,20 @@ class Agent():
             action[action_index] = 1.
             # Get next state and reward, done is terminal
             state_1, reward, terminal, _ = self._env.step(action_index)
+            # Not sure if that's allowed...
+            if reward > 0:
+                reward -= abs(state_1[0]) / 10
             total_reward += reward
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
             reward = torch.tensor([reward]).unsqueeze(0)
-            state_1 = torch.tensor(state_1).unsqueeze(0)
+            state_1 = torch.tensor(state_1, dtype=torch.float64).unsqueeze(0)
             # Save transition to replay memory
             self._rm.push((state, action, reward, state_1, terminal))
             # Next state becomes current state
             state = state_1
             # Optimize the nn
             self._optimize_model()
-            #self._target_net.load_state_dict(self._policy_net.state_dict())
         if update_target_net:
             self._target_net.load_state_dict(self._policy_net.state_dict())
         return total_reward

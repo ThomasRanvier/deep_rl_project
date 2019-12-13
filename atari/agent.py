@@ -48,7 +48,6 @@ class Agent():
         terminal = False
         while(not terminal):
             self._env.render()
-            # https://www.toptal.com/deep-learning/pytorch-reinforcement-learning-tutorial
             # Get output from nn
             with torch.no_grad():
                 output = self._policy_net(state)
@@ -69,7 +68,6 @@ class Agent():
             state = state_1
             # Optimize the nn
             self._optimize_model()
-            #self._target_net.load_state_dict(self._policy_net.state_dict())
         if update_target_net:
             self._target_net.load_state_dict(self._policy_net.state_dict())
         return total_reward
