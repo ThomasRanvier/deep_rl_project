@@ -5,7 +5,7 @@ import cv2
 from config import *
 
 class Agent():
-    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env):
+    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env, device):
         self._rm = rm
         self._policy_net = policy_net
         self._target_net = target_net
@@ -14,6 +14,7 @@ class Agent():
         self._env = env
         self._last_action = random.randint(0, N_ACTIONS - 1)
         self._last_k_frames = []
+        self._device = device
 
     def _optimize_model(self):
         # Sample random minibatch
@@ -55,15 +56,16 @@ class Agent():
             #cv2.waitKey(0)
             #cv2.destroyAllWindows()
         state = stacked_frames
-        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float64, device=self._device).unsqueeze(0)
         return state
 
     def _get_last_k_frames(self):
         iteration_reward = 0
         last_k_frames = []
         for i in range(K_SKIP_FRAMES):
-            # Display screen
-            self._env.render(mode='human')
+            if DISPLAY_SCREEN:
+                # Display screen
+                self._env.render(mode='human')
             # Get the frame
             img = self._env.render(mode='rgb_array')
             last_k_frames.append(img)
@@ -80,21 +82,24 @@ class Agent():
         self._last_k_frames = last_k_frames
         return (iteration_reward, last_k_frames, terminal)
 
-    def run_episode(self, epsilon, update_target_net = False):
+    def run_episode(self, epsilon, update_target_net = False, save_nets = False):
         self._env.reset()
         # Get the last k frames with the cumulated reward and terminal bool
         total_reward, last_k_frames, terminal = self._get_last_k_frames()
         # Preprocess the k last frames to get one state
         state = self._preprocess_state(last_k_frames)
         while not terminal:
-            # Get output from nn applied on last k preprocessed frames
-            with torch.no_grad():
-                output = self._policy_net(state)
-            # Get action from the nn output with an e-greedy exploration
-            self._last_action = \
-                random.randint(0, N_ACTIONS - 1) if random.random() < epsilon else int(torch.argmax(output))
+            if random.random() < epsilon:
+                # Random action
+                self._last_action = random.randint(0, N_ACTIONS - 1)
+            else:
+                # Get output from nn applied on last k preprocessed frames
+                with torch.no_grad():
+                    output = self._policy_net(state)
+                self._last_action = int(torch.argmax(output))
+
             # Initialize action
-            action = torch.zeros([N_ACTIONS])
+            action = torch.zeros([N_ACTIONS], device=self._device)
             action[self._last_action] = 1.
 
             # Get the last k frames with the cumulated reward and terminal bool
@@ -105,7 +110,7 @@ class Agent():
 
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
-            iteration_reward = torch.tensor([iteration_reward]).unsqueeze(0)
+            iteration_reward = torch.tensor([iteration_reward], device=self._device).unsqueeze(0)
             # Save transition to replay memory
             self._rm.push((state, action, iteration_reward, state_1, terminal))
             # Next state becomes current state
@@ -114,4 +119,7 @@ class Agent():
             self._optimize_model()
         if update_target_net:
             self._target_net.load_state_dict(self._policy_net.state_dict())
+        if save_nets:
+            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '.pt')
+            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '.pt')
         return total_reward
