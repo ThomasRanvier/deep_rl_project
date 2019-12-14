@@ -41,9 +41,13 @@ class Agent():
         loss.backward()
         self._optimizer.step()
 
+    def _preprocess_state(self, state):
+        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+        return state
+
     def run_episode(self, epsilon, update_target_net = False):
         state = self._env.reset()
-        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+        state = self._preprocess_state(state)
         total_reward = 0
         terminal = False
         while(not terminal):
@@ -64,7 +68,7 @@ class Agent():
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
             reward = torch.tensor([reward]).unsqueeze(0)
-            state_1 = torch.tensor(state_1, dtype=torch.float64).unsqueeze(0)
+            state_1 = self._preprocess_state(state_1)
             # Save transition to replay memory
             self._rm.push((state, action, reward, state_1, terminal))
             # Next state becomes current state

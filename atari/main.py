@@ -10,8 +10,8 @@ from config import *
 
 if __name__ == "__main__":
     rm = ReplayMemory(RM_CAPACITY)
-    policy_net = Net(FEATURES_SIZES).double()
-    target_net = Net(FEATURES_SIZES).double()
+    policy_net = Net().double()
+    target_net = Net().double()
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
     optimizer = optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
