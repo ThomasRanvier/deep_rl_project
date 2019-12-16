@@ -10,8 +10,8 @@ class Net(nn.Module):
         self.conv_1 = torch.nn.Conv2d(in_channels=4, out_channels=32, kernel_size=8, stride=4, padding=0)
         # Initialize Torch variable of the second conv layer
         self.conv_2 = torch.nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2, padding=0)
-        # Initialize Torch variable of the third conv layer, add padding 2 to keep same dimensions
-        self.conv_3 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=2)
+        # Initialize Torch variable of the third conv layer, add a padding of 1 to keep same dimensions
+        self.conv_3 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1)
         # Initialize Torch variable of the two linear layers
         self.linear_1 = torch.nn.Linear(9 * 9 * 64, 512)
         self.linear_2 = torch.nn.Linear(512, N_ACTIONS)
