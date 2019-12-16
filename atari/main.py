@@ -59,7 +59,8 @@ if __name__ == '__main__':
         reward_x.append(iterations)
         reward_y.append(episode_reward)
         if VERBOSE:
-            remaining_estimation = (((end - init_start) / iterations) * N_ITERATIONS) / 60
+            total_estimated_time = ((end - init_start) / iterations) * N_ITERATIONS
+            remaining_estimation = (total_estimated_time - (end - init_start)) / 60
             print('Ep {5} - ite {0}/{1} - reward {2} - eps {3:.2f} - time {4:.2f}s - total {6:.2f}m - remain {7:.2f}m'
                   .format(iterations, N_ITERATIONS, episode_reward, epsilon, end - start, episode,
                           (end - init_start) / 60, remaining_estimation))
