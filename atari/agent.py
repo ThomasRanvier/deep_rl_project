@@ -1,6 +1,7 @@
 import torch
 import random
 import cv2
+import time
 
 from config import *
 
@@ -15,6 +16,8 @@ class Agent():
         self._last_action = random.randint(0, N_ACTIONS - 1)
         self._last_k_frames = []
         self._device = device
+        self._epsilon = INITIAL_EPSILON
+        self._iteration = 0
 
     def _optimize_model(self):
         # Sample random minibatch
@@ -80,16 +83,29 @@ class Agent():
                     last_k_frames.insert(0, self._last_k_frames[index])
                 break
         self._last_k_frames = last_k_frames
+        self._increment_iteration()
+        self._update_epsilon()
         return (iteration_reward, last_k_frames, terminal)
 
-    def run_episode(self, epsilon, update_target_net = False, save_nets = False):
+    def _increment_iteration(self):
+        self._iteration += 1
+        if self._iteration in SAVE_MODELS:
+            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
+            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
+        if self._iteration % TARGET_UPDATE == 0:
+            self._target_net.load_state_dict(self._policy_net.state_dict())
+
+    def _update_epsilon(self):
+        self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
+
+    def run_episode(self):
         self._env.reset()
         # Get the last k frames with the cumulated reward and terminal bool
-        total_reward, last_k_frames, terminal = self._get_last_k_frames()
+        episode_reward, last_k_frames, terminal = self._get_last_k_frames()
         # Preprocess the k last frames to get one state
         state = self._preprocess_state(last_k_frames)
         while not terminal:
-            if random.random() < epsilon:
+            if random.random() < self._epsilon:
                 # Random action
                 self._last_action = random.randint(0, N_ACTIONS - 1)
             else:
@@ -104,7 +120,7 @@ class Agent():
 
             # Get the last k frames with the cumulated reward and terminal bool
             iteration_reward, last_k_frames, terminal = self._get_last_k_frames()
-            total_reward += iteration_reward
+            episode_reward += iteration_reward
             # Preprocess the k last frames to get one state
             state_1 = self._preprocess_state(last_k_frames)
 
@@ -117,9 +133,9 @@ class Agent():
             state = state_1
             # Optimize the nn
             self._optimize_model()
-        if update_target_net:
-            self._target_net.load_state_dict(self._policy_net.state_dict())
-        if save_nets:
-            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '.pt')
-            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '.pt')
-        return total_reward
+        if self._iteration >= N_ITERATIONS:
+            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
+            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
+        return self._epsilon, self._iteration, episode_reward,
+
+

@@ -3,11 +3,27 @@ import matplotlib.pyplot as plt
 import torch.optim as optim
 import torch.nn as nn
 import torch
+import time
 
 from replay_memory import ReplayMemory
 from net import Net
 from agent import Agent
 from config import *
+
+def display_plot(epsilon_x, epsilon_y, reward_x, reward_y, save = False, ax1 = None, ax2 = None, fig = None):
+    if ax1 == None:
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+    ax1.set_xlabel('iterations')
+    ax1.set_ylabel('epsilon', color='red')
+    ax1.plot(epsilon_x, epsilon_y, color='red')
+    ax1.tick_params(axis='y', labelcolor='red')
+    ax2.set_ylabel('reward per episode', color='blue')
+    ax2.plot(reward_x, reward_y, color='blue')
+    ax2.tick_params(axis='y', labelcolor='blue')
+    fig.tight_layout()
+    if save:
+        plt.savefig(PLOTS_DIR + FILE_SUFFIX + '.png')
 
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -18,39 +34,40 @@ if __name__ == '__main__':
     target_net.eval()
     optimizer = optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     criterion = nn.MSELoss()
-    epsilon = INITIAL_EPSILON
     env = gym.make('Breakout-ramNoFrameskip-v4')
     agent = Agent(rm, policy_net, target_net, optimizer, criterion, env, device)
-    reward_hist = []
-    epsilon_hist = []
+    reward_x = [0]
+    reward_y = [0]
+    epsilon_x = [0, N_ITERATIONS // FACTOR_TO_MIN_EPS, N_ITERATIONS]
+    epsilon_y = [INITIAL_EPSILON, MINIMAL_EPSILON, MINIMAL_EPSILON]
     if DYNAMIC_PLOT:
         plt.ion()
-    for episode in range(N_EPISODES):
-        total_reward = agent.run_episode(epsilon,
-                                         update_target_net=(episode % TARGET_UPDATE == 0),
-                                         save_nets=(SAVE_MODELS and episode == N_EPISODES - 1))
-        reward_hist.append(total_reward)
-        epsilon_hist.append(epsilon)
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    """
+    TO IMPROVE:
+        - Switch from Adam optim to MSProp to see difference, find hyperparameters to use
+        - Add recording
+    """
+    iterations = 0
+    episode = 1
+    init_start = time.time()
+    while iterations <= N_ITERATIONS:
+        start = time.time()
+        epsilon, iterations, episode_reward = agent.run_episode()
+        end = time.time()
+        reward_x.append(iterations)
+        reward_y.append(episode_reward)
         if VERBOSE:
-            print('episode:', episode + 1, '- total reward:', total_reward)
+            remaining_estimation = (((end - init_start) / iterations) * N_ITERATIONS) / 60
+            print('Ep {5} - ite {0}/{1} - reward {2} - eps {3:.2f} - time {4:.2f}s - total {6:.2f}m - remain {7:.2f}m'
+                  .format(iterations, N_ITERATIONS, episode_reward, epsilon, end - start, episode,
+                          (end - init_start) / 60, remaining_estimation))
         if DYNAMIC_PLOT:
-            plt.figure(1)
-            plt.clf()
-            plt.title('Training... eps: ' + str(round(epsilon, 2)))
-            plt.xlabel('Episode')
-            plt.ylabel('Total reward')
-            plt.plot(reward_hist)
-            plt.plot(epsilon_hist)
-        epsilon = min(MINIMAL_EPSILON, epsilon - EPSILON_ANNEALING_STEP)
+            display_plot(epsilon_x, epsilon_y, reward_x, reward_y, ax1=ax1, ax2=ax2, fig=fig)
+        episode += 1
     env.close()
     if DYNAMIC_PLOT:
-        plt.title('Done')
         plt.ioff()
         plt.show()
-    else:
-        plt.title('Reward evolution')
-        plt.xlabel('Episode')
-        plt.ylabel('Total reward')
-        plt.plot(reward_hist)
-        plt.plot(epsilon_hist)
-        plt.savefig(PLOTS_DIR + FILE_SUFFIX + '.png')
+    display_plot(epsilon_x, epsilon_y, reward_x, reward_y, save=True)
