@@ -41,7 +41,7 @@ if __name__ == '__main__':
             plt.ylabel('Total reward')
             plt.plot(reward_hist)
             plt.plot(epsilon_hist)
-        epsilon -= (epsilon > MINIMAL_EPSILON) * EPSILON_ANNEALING_STEP
+        epsilon = min(MINIMAL_EPSILON, epsilon - EPSILON_ANNEALING_STEP)
     env.close()
     if DYNAMIC_PLOT:
         plt.title('Done')
