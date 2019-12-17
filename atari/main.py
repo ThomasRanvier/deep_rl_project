@@ -63,7 +63,7 @@ if __name__ == '__main__':
             remaining_estimation = (total_estimated_time - (end - init_start)) / 60
             print('Ep {5} - ite {0}/{1} - reward {2} - eps {3:.2f} - time {4:.2f}s - total {6:.2f}m - remain {7:.2f}m'
                   .format(iterations, N_ITERATIONS, episode_reward, epsilon, end - start, episode,
-                          (end - init_start) / 60, remaining_estimation))
+                          (end - init_start) / 60, remaining_estimation), flush=True)
         if DYNAMIC_PLOT:
             display_plot(epsilon_x, epsilon_y, reward_x, reward_y, ax1=ax1, ax2=ax2, fig=fig)
         episode += 1
