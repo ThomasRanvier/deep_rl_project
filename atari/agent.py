@@ -73,7 +73,7 @@ class Agent():
             img = self._env.render(mode='rgb_array')
             last_k_frames.append(img)
             # Play last chosen action
-            _, reward, terminal, _ = self._env.step(self._last_action)
+            _, reward, terminal, _ = self._env.step(self._last_action + 1)
             iteration_reward += reward
             if terminal:
                 # If terminal we complete the state with the previous frames
@@ -81,22 +81,20 @@ class Agent():
                 for j in range((K_SKIP_FRAMES - 1) - i):
                     index = -j - 1
                     last_k_frames.insert(0, self._last_k_frames[index])
+                iteration_reward = -1
                 break
         self._last_k_frames = last_k_frames
         self._increment_iteration()
-        self._update_epsilon()
         return (iteration_reward, last_k_frames, terminal)
 
     def _increment_iteration(self):
         self._iteration += 1
+        self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
         if self._iteration in SAVE_MODELS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
             torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
         if self._iteration % TARGET_UPDATE == 0:
             self._target_net.load_state_dict(self._policy_net.state_dict())
-
-    def _update_epsilon(self):
-        self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
 
     def run_episode(self):
         self._env.reset()
@@ -120,7 +118,7 @@ class Agent():
 
             # Get the last k frames with the cumulated reward and terminal bool
             iteration_reward, last_k_frames, terminal = self._get_last_k_frames()
-            episode_reward += iteration_reward
+            episode_reward += 0 if iteration_reward < 0 else iteration_reward
             # Preprocess the k last frames to get one state
             state_1 = self._preprocess_state(last_k_frames)
 
