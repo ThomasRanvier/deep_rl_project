@@ -124,7 +124,7 @@ class Agent():
 
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
-            iteration_reward = torch.tensor([iteration_reward], device=self._device).unsqueeze(0)
+            iteration_reward = torch.tensor([iteration_reward], dtype=torch.float64, device=self._device).unsqueeze(0)
             # Save transition to replay memory
             self._rm.push((state, action, iteration_reward, state_1, terminal))
             # Next state becomes current state
