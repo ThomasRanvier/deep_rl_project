@@ -4,13 +4,19 @@ import random
 from config import *
 
 class Agent():
-    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env):
+    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env, device):
         self._rm = rm
         self._policy_net = policy_net
         self._target_net = target_net
         self._optimizer = optimizer
         self._criterion = criterion
         self._env = env
+        self._device = device
+        self._epsilon = INITIAL_EPSILON
+        self._iteration = 0
+        self._loss_hist = []
+        self._epsilon_hist = []
+        #random.seed(RANDOM_SEED)
 
     def _optimize_model(self):
         # Sample random minibatch
@@ -22,9 +28,11 @@ class Agent():
         state_1_batch = torch.cat(tuple(d[3] for d in minibatch))
 
         # Extract Q-values for the current states from the minibatch
+        # Q(s, a)
         q_values = torch.sum(self._policy_net(state_batch) * action_batch, dim=1)
 
         # Extract Q-values for the minibatch next states
+        # ^Q(s', a)
         output_1_batch = self._target_net(state_1_batch)
         # Set y_j to r_j for terminals, otherwise to r_j + GAMMA * max(Q)
         next_q_values = torch.cat(tuple(
@@ -33,41 +41,65 @@ class Agent():
         )).double()
 
         self._optimizer.zero_grad()
-        # We have to understand why we need this
+        # Detach so that we do not minimize the target net
         next_q_values = next_q_values.detach()
         # MSE loss
         loss = self._criterion(q_values, next_q_values)
+        self._loss_hist.append(float(loss))
         # Back propagation
         loss.backward()
+        # DQN gradient clipping
+        # https://stackoverflow.com/questions/47036246/dqn-q-loss-not-converging
+        for param in self._policy_net.parameters():
+            param.grad.data.clamp_(-1, 1)
         self._optimizer.step()
 
     def _preprocess_state(self, state):
-        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float64, device=self._device).unsqueeze(0)
         return state
 
-    def run_episode(self, epsilon, update_target_net = False):
+    def _increment_iteration(self):
+        self._iteration += 1
+        self._epsilon_hist.append(self._epsilon)
+        self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
+        #self._epsilon = max(MINIMAL_EPSILON, self._epsilon * EPSILON_ANNEALING_RATE)
+        if self._iteration in SAVE_MODELS:
+            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
+            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
+        if self._iteration % TARGET_UPDATE == 0:
+            self._target_net.load_state_dict(self._policy_net.state_dict())
+
+    def run_episode(self):
         state = self._env.reset()
         state = self._preprocess_state(state)
-        total_reward = 0
+        episode_reward = 0
         terminal = False
-        while(not terminal):
-            self._env.render()
+        while not terminal:
+            if DISPLAY_SCREEN:
+                self._env.render(mode='human')
             # Get output from nn
-            with torch.no_grad():
-                output = self._policy_net(state)
-            action_index = random.randint(0, N_ACTIONS - 1) if random.random() < epsilon else int(torch.argmax(output))
+            if random.random() < self._epsilon:
+                # Random action
+                action_index = random.randint(0, N_ACTIONS - 1)
+            else:
+                # Get output from nn applied on last k preprocessed frames
+                with torch.no_grad():
+                    output = self._policy_net(state)
+                action_index = int(torch.argmax(output))
+
             # Initialize action
-            action = torch.zeros([N_ACTIONS])
+            action = torch.zeros([N_ACTIONS], device=self._device)
             action[action_index] = 1.
+
             # Get next state and reward, done is terminal
             state_1, reward, terminal, _ = self._env.step(action_index)
-            # Not sure if that's allowed...
-            if reward > 0:
-                reward -= abs(state_1[0]) / 10
-            total_reward += reward
+            # Increment iteration counter and update epsilon, etc.
+            self._increment_iteration()
+            episode_reward += reward
+
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
-            reward = torch.tensor([reward]).unsqueeze(0)
+            reward = torch.tensor([reward], dtype=torch.float64, device=self._device).unsqueeze(0)
             state_1 = self._preprocess_state(state_1)
             # Save transition to replay memory
             self._rm.push((state, action, reward, state_1, terminal))
@@ -75,6 +107,7 @@ class Agent():
             state = state_1
             # Optimize the nn
             self._optimize_model()
-        if update_target_net:
-            self._target_net.load_state_dict(self._policy_net.state_dict())
-        return total_reward
+        if self._iteration >= N_ITERATIONS:
+            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
+            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
+        return self._epsilon_hist, self._loss_hist, self._iteration, episode_reward
