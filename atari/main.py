@@ -52,7 +52,7 @@ if __name__ == '__main__':
     iterations = 0
     episode = 1
     init_start = time.time()
-    while iterations <= N_ITERATIONS:
+    while iterations < N_ITERATIONS:
         start = time.time()
         epsilon, iterations, episode_reward = agent.run_episode()
         end = time.time()
