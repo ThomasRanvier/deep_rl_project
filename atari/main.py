@@ -27,7 +27,7 @@ def display_plot(epsilon_x, epsilon_y, reward_x, reward_y, save = False, ax1 = N
 
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Used device: {} - eps annealing step: {}'.format(device, EPSILON_ANNEALING_STEP))
+    print('Used device: {} - eps annealing step: {}'.format(device, EPSILON_ANNEALING_STEP), flush=True)
     rm = ReplayMemory(RM_CAPACITY)
     policy_net = Net().double().to(device)
     target_net = Net().double().to(device)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
             remaining_estimation = (total_estimated_time - (end - init_start)) / 60
             print('Ep {5} - ite {0}/{1} - reward {2} - eps {3:.2f} - rm load {4:.2f}% - uptime {6:.2f}m - remaining {7:.2f}m'
                   .format(iterations, N_ITERATIONS, episode_reward, epsilon, 100. * len(rm) / RM_CAPACITY, episode,
-                          (end - init_start) / 60, remaining_estimation))
+                          (end - init_start) / 60, remaining_estimation), flush=True)
         if DYNAMIC_PLOT:
             display_plot(epsilon_x, epsilon_y, reward_x, reward_y, ax1=ax1, ax2=ax2, fig=fig)
         episode += 1

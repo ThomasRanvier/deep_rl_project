@@ -1,12 +1,9 @@
 import random
 
-from config import *
-
 class ReplayMemory():
     def __init__(self, capacity):
         self._capacity = capacity
         self._memory = []
-        #random.seed(RANDOM_SEED)
 
     def push(self, transition):
         if len(self._memory) >= self._capacity:
