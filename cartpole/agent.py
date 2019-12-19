@@ -19,6 +19,9 @@ class Agent():
         #random.seed(RANDOM_SEED)
 
     def _optimize_model(self):
+        if not USE_MODEL == '':
+            self._loss_hist.append(0)
+            return
         # Sample random minibatch
         minibatch = self._rm.sample(MINIBATCH_SIZE)
         # Unpack minibatch
@@ -78,7 +81,7 @@ class Agent():
             if DISPLAY_SCREEN:
                 self._env.render(mode='human')
             # Get output from nn
-            if random.random() < self._epsilon:
+            if USE_MODEL == '' and random.random() < self._epsilon:
                 # Random action
                 action_index = random.randint(0, N_ACTIONS - 1)
             else:

@@ -33,6 +33,9 @@ if __name__ == "__main__":
     print('Used device: {} - epsilon annealing step: {}'.format(device, EPSILON_ANNEALING_STEP), flush=True)
     rm = ReplayMemory(RM_CAPACITY)
     policy_net = Net(FEATURES_SIZES).double().to(device)
+    if not USE_MODEL == '':
+        policy_net = torch.load(USE_MODEL).double().to(device)
+        policy_net.eval()
     target_net = Net(FEATURES_SIZES).double().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
@@ -57,7 +60,7 @@ if __name__ == "__main__":
         reward_x.append(iterations)
         reward_y.append(episode_reward)
         iterations_x.extend(list(range(len(iterations_x) + 1, iterations + 1)))
-        if VERBOSE:
+        if VERBOSE and USE_MODEL == '':
             total_estimated_time = ((end - init_start) / iterations) * N_ITERATIONS
             remaining_estimation = (total_estimated_time - (end - init_start)) / 60
             print(

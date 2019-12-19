@@ -13,11 +13,12 @@ EPSILON_ANNEALING_STEP = (INITIAL_EPSILON - MINIMAL_EPSILON) / ((1. / FACTOR_TO_
 GAMMA = .999# was .999 since the start, .98 too low, maybe .99 too, .995
 LEARNING_RATE = .0001
 TARGET_UPDATE = 10000# 4000 too high, 500 too small, 2000 quite OK, 2500 to test again
-DISPLAY_SCREEN = False
-DYNAMIC_PLOT = False
+DISPLAY_SCREEN = True
+DYNAMIC_PLOT = True
 VERBOSE = True
 PLOTS_DIR = 'reward_plots/'
 MODELS_DIR = 'saved_models/'
 FILE_SUFFIX = 'lightmodel_clipping_bigrm_lr' + str(LEARNING_RATE) + '_bs' + str(MINIBATCH_SIZE) + \
               '_tu' + str(TARGET_UPDATE) + '_it' + str(N_ITERATIONS) + '_g' + str(GAMMA)
-SAVE_MODELS = [N_ITERATIONS // 2, (3 * N_ITERATIONS) // 4, (7 * N_ITERATIONS) // 8]
+SAVE_MODELS = []#N_ITERATIONS // 2, (3 * N_ITERATIONS) // 4, (7 * N_ITERATIONS) // 8]
+USE_MODEL = ''#'saved_models/policy_net_lightmodel_clipping_bigrm_lr0.0001_bs512_tu10000_it400000_g0.999_c350000.pt'
