@@ -107,7 +107,7 @@ class Agent():
             
             # Scale the reward depending on the distance of the cart from the center
             if reward > 0:
-                reward -= abs(state_1[0]) / 10
+                reward -= abs(state_1[0]) / 4.8
 
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
