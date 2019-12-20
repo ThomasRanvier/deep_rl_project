@@ -34,7 +34,7 @@ class Agent():
         # ex: output = [.25, .75] * action = [1., 0.] = [.25, 0.]
         # Then we sum it on dimension 1
         # ex: sum([.25, 0.]) = .25
-        # We then obtain a tensor that contains of one sum for each state in the batch
+        # We then obtain a tensor that contains one sum for each state in the batch
         q_values = torch.sum(self._policy_net(state_batch) * action_batch, dim=1)
 
         # Extract Q-values for the minibatch next states
