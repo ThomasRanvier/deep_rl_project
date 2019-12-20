@@ -1,0 +1,22 @@
+N_ENTRIES = 4
+N_ACTIONS = 2
+FEATURES_SIZES = [N_ENTRIES, 8, 4, N_ACTIONS] # light model with only 8 and 4 neurons on hidden layers works better
+MINIBATCH_SIZE = 64 # 512 for long runs
+N_ITERATIONS = 20000 # 400000 for long runs
+RM_CAPACITY = N_ITERATIONS
+INITIAL_EPSILON = 1.
+MINIMAL_EPSILON = .05
+FACTOR_TO_MIN_EPS = 2.5
+EPSILON_ANNEALING_STEP = (INITIAL_EPSILON - MINIMAL_EPSILON) / ((1. / FACTOR_TO_MIN_EPS) * N_ITERATIONS)
+GAMMA = .999 # .999 is good
+LEARNING_RATE = .001 # (.0001 for 512)
+TARGET_UPDATE = 2000 # 10000 is good for long runs, otherwise 2000
+DISPLAY_SCREEN = True
+DYNAMIC_PLOT = True
+VERBOSE = True
+PLOTS_DIR = 'reward_plots/'
+MODELS_DIR = 'saved_models/'
+FILE_SUFFIX = 'lr' + str(LEARNING_RATE) + '_bs' + str(MINIBATCH_SIZE) + \
+              '_tu' + str(TARGET_UPDATE) + '_it' + str(N_ITERATIONS) + '_g' + str(GAMMA)
+SAVE_MODELS = []#N_ITERATIONS // 2, (3 * N_ITERATIONS) // 4, (7 * N_ITERATIONS) // 8]
+USE_MODEL = ''#'saved_models/policy_net_lightmodel_clipping_bigrm_lr0.0001_bs512_tu10000_it400000_g0.999_c350000.pt'
