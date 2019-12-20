@@ -104,6 +104,10 @@ class Agent():
             # Increment iteration counter and update epsilon, etc.
             self._increment_iteration()
             episode_reward += reward
+            
+            # Scale the reward depending on the distance of the cart from the center
+            if reward > 0:
+                reward -= abs(state_1[0]) / 10
 
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
