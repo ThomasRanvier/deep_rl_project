@@ -16,7 +16,6 @@ class Agent():
         self._iteration = 0
         self._loss_hist = []
         self._epsilon_hist = []
-        #random.seed(RANDOM_SEED)
 
     def _optimize_model(self):
         self._loss_hist.append(0)

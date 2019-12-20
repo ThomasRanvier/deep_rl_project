@@ -28,7 +28,6 @@ def display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, save = Fa
         plt.savefig(PLOTS_DIR + FILE_SUFFIX + '.png')
 
 if __name__ == "__main__":
-    #torch.manual_seed(RANDOM_SEED)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Used device: {} - epsilon annealing step: {}'.format(device, EPSILON_ANNEALING_STEP), flush=True)
     rm = ReplayMemory(RM_CAPACITY)
