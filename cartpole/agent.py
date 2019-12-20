@@ -65,7 +65,7 @@ class Agent():
         # Save models if needed
         if self._iteration in SAVE_MODELS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
-            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
+            #torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
 
     def _preprocess_state(self, state):
         state = torch.tensor(state, dtype=torch.float64, device=self._device).unsqueeze(0)
@@ -121,5 +121,5 @@ class Agent():
             self._optimize_model()
         if self._iteration >= N_ITERATIONS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
-            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
+            #torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
         return self._epsilon_hist, sum(self._loss_hist) / len(self._loss_hist), self._iteration, episode_reward
