@@ -112,9 +112,10 @@ class Agent():
         # Initialize episode variables
         terminal = False
         episode_iteration = 0
+        lives = 5
         self._loss_hist = []
         while not terminal:
-            if DISPLAY_SCREEN:
+            if DISPLAY_SCREEN and lives <= 1:
                 self._env.render(mode='human')
             # Select new action every k frames
             if episode_iteration % K_SKIP_FRAMES == 0:
@@ -128,13 +129,15 @@ class Agent():
                     self._last_action = int(torch.argmax(output))
 
             # Play the selected action
-            _, reward, terminal, _ = self._env.step(self._last_action)
+            _, reward, terminal, obs = self._env.step(self._last_action)
             episode_reward += reward
+            current_lives = obs['ale.lives']
+
+            if current_lives < lives or terminal:
+                reward = -1
+
             # Get resulting frame
             self._get_frame()
-            # Put reward to -1 if terminal state
-            if terminal:
-                reward = -1
 
             # Get the new state
             state_1 = self._get_current_state()
@@ -155,6 +158,9 @@ class Agent():
             episode_iteration += 1
             # increment total iterations count and epsilon
             self._increment_iteration()
+            if current_lives < lives and not terminal:
+                lives = current_lives
+                self._no_op()
         if self._iteration >= N_ITERATIONS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
         return self._epsilon_hist, sum(self._loss_hist) / len(self._loss_hist), self._iteration, episode_reward
