@@ -20,7 +20,6 @@ class Agent():
         self._epsilon_hist = []
 
     def _optimize_model(self):
-        self._loss_hist.append(0)
         # Sample random minibatch
         minibatch = self._rm.sample(MINIBATCH_SIZE)
         # Unpack minibatch
@@ -52,6 +51,7 @@ class Agent():
         next_q_values = next_q_values.detach()
         # loss
         loss = self._criterion(q_values, next_q_values)
+        self._loss_hist.append(float(loss))
         # Back propagation
         loss.backward()
         # DQN gradient clipping
@@ -67,10 +67,32 @@ class Agent():
         if self._iteration in SAVE_MODELS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
 
-    def _preprocess_state(self, last_k_frames):
+    def _increment_iteration(self):
+        self._iteration += 1
+        self._epsilon_hist.append(self._epsilon)
+        self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
+
+    def _no_op(self):
+        # Perform N times the no op action
+        # Those N iterations are not part of the learning process (counter not incremented, epsilon unchanged, etc.)
+        self._last_k_frames = []
+        for _ in range(N_NO_OP):
+            # Play no op action
+            _, _, _, _ = self._env.step(NO_OP_ACTION)
+            # Get resulting frame
+            self._get_frame()
+
+    def _get_frame(self):
+        img = self._env.render(mode='rgb_array')
+        self._last_k_frames.append(img)
+        if len(self._last_k_frames) > K_SKIP_FRAMES:
+            self._last_k_frames.pop(0)
+
+    def _get_current_state(self):
         stacked_frames = []
-        for f in last_k_frames:
-            f = f[:, :, 0] * 0.299 + f[:, :, 1] * 0.587 + f[:, :, 2] * 0.114
+        for f in self._last_k_frames:
+            #f = f[:, :, 0] * 0.299 + f[:, :, 1] * 0.587 + f[:, :, 2] * 0.114
+            f = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
             f = f[58:-18, 8:-8]
             f = cv2.resize(f, (84, 84), interpolation=cv2.INTER_AREA)
             stacked_frames.append(f)
@@ -81,73 +103,58 @@ class Agent():
         state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
         return state
 
-    def _get_last_k_frames(self):
-        iteration_reward = 0
-        last_k_frames = []
-        for i in range(K_SKIP_FRAMES):
-            if DISPLAY_SCREEN:
-                # Display screen
-                self._env.render(mode='human')
-            # Get the frame
-            img = self._env.render(mode='rgb_array')
-            last_k_frames.append(img)
-            # Play last chosen action
-            _, reward, terminal, _ = self._env.step(self._last_action + 1)
-            iteration_reward += reward
-            if terminal:
-                # If terminal we complete the state with the previous frames
-                # Otherwise the state might include less than 4 frames, the CNN requires 4 frames to work
-                for j in range((K_SKIP_FRAMES - 1) - i):
-                    index = -j - 1
-                    last_k_frames.insert(0, self._last_k_frames[index])
-                iteration_reward = -1
-                break
-        self._last_k_frames = last_k_frames
-        self._increment_iteration()
-        return (iteration_reward, last_k_frames, terminal)
-
-    def _increment_iteration(self):
-        self._iteration += 1
-        self._epsilon_hist.append(self._epsilon)
-        self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
-
     def run_episode(self):
         self._env.reset()
-        # Get the last k frames with the cumulated reward and terminal bool
-        episode_reward, last_k_frames, terminal = self._get_last_k_frames()
+        self._no_op()
+        episode_reward = 0
         # Preprocess the k last frames to get one state
-        state = self._preprocess_state(last_k_frames)
+        state = self._get_current_state()
+        # Initialize episode variables
         terminal = False
+        episode_iteration = 0
         self._loss_hist = []
         while not terminal:
-            if random.random() < self._epsilon:
-                # Random action
-                self._last_action = random.randint(0, N_ACTIONS - 1)
-            else:
-                # Get output from nn applied on last k preprocessed frames
-                with torch.no_grad():
-                    output = self._policy_net(state)
-                self._last_action = int(torch.argmax(output))
+            if DISPLAY_SCREEN:
+                self._env.render(mode='human')
+            # Select new action every k frames
+            if episode_iteration % K_SKIP_FRAMES == 0:
+                if random.random() < self._epsilon:
+                    # Random action
+                    self._last_action = random.randint(0, N_ACTIONS - 1)
+                else:
+                    # Get output from nn applied on last k preprocessed frames
+                    with torch.no_grad():
+                        output = self._policy_net(state)
+                    self._last_action = int(torch.argmax(output))
 
-            # Initialize action
+            # Play the selected action
+            _, reward, terminal, _ = self._env.step(self._last_action)
+            episode_reward += reward
+            # Get resulting frame
+            self._get_frame()
+            # Put reward to -1 if terminal state
+            if terminal:
+                reward = -1
+
+            # Get the new state
+            state_1 = self._get_current_state()
+            # Cast all data to same type : unsqueezed tensor
             action = torch.zeros([N_ACTIONS])
             action[self._last_action] = 1.
-
-            # Get the last k frames with the cumulated reward and terminal bool
-            iteration_reward, last_k_frames, terminal = self._get_last_k_frames()
-            episode_reward += 0 if iteration_reward < 0 else iteration_reward
-            # Preprocess the k last frames to get one state
-            state_1 = self._preprocess_state(last_k_frames)
-
-            # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
-            iteration_reward = torch.tensor([iteration_reward], dtype=torch.float64).unsqueeze(0)
+            reward = torch.tensor([reward], dtype=torch.float64).unsqueeze(0)
             # Save transition to replay memory
-            self._rm.push((state, action, iteration_reward, state_1, terminal))
+            self._rm.push((state, action, reward, state_1, terminal))
+
             # Next state becomes current state
             state = state_1
             # Optimize the nn
             self._optimize_model()
+
+            # increment episode iteration count to know when to select a new action
+            episode_iteration += 1
+            # increment total iterations count and epsilon
+            self._increment_iteration()
         if self._iteration >= N_ITERATIONS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
         return self._epsilon_hist, sum(self._loss_hist) / len(self._loss_hist), self._iteration, episode_reward

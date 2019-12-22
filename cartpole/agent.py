@@ -94,10 +94,6 @@ class Agent():
                     output = self._policy_net(state)
                 action_index = int(torch.argmax(output))
 
-            # Initialize action
-            action = torch.zeros([N_ACTIONS], device=self._device)
-            action[action_index] = 1.
-
             # Get next state and reward, done is terminal
             state_1, reward, terminal, _ = self._env.step(action_index)
             # Increment iteration counter and update epsilon, etc.
@@ -109,6 +105,8 @@ class Agent():
                 reward -= abs(state_1[0]) / 4.8
 
             # Cast all data to same type : unsqueezed tensor
+            action = torch.zeros([N_ACTIONS], device=self._device)
+            action[action_index] = 1.
             action = action.unsqueeze(0)
             reward = torch.tensor([reward], dtype=torch.float64, device=self._device).unsqueeze(0)
             state_1 = self._preprocess_state(state_1)
