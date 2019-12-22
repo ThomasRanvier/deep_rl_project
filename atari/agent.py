@@ -54,17 +54,18 @@ class Agent():
         self._loss_hist.append(float(loss))
         # Back propagation
         loss.backward()
-        # DQN gradient clipping
-        # https://stackoverflow.com/questions/47036246/dqn-q-loss-not-converging
-        for param in self._policy_net.parameters():
-            param.grad.data.clamp_(-1, 1)
-        self._optimizer.step()
 
         # del variables to avoid having an increasing memory consumption during the whole training
         del loss
         del next_q_values
         del output_1_batch
         del q_values
+
+        # DQN gradient clipping
+        # https://stackoverflow.com/questions/47036246/dqn-q-loss-not-converging
+        for param in self._policy_net.parameters():
+            param.grad.data.clamp_(-1, 1)
+        self._optimizer.step()
 
         # Update target net if needed
         if self._iteration % TARGET_UPDATE == 0:
@@ -135,7 +136,7 @@ class Agent():
                     self._last_action = int(torch.argmax(output))
 
             # Play the selected action
-            _, reward, terminal, obs = self._env.step(self._last_action)
+            _, reward, terminal, obs = self._env.step(self._last_action + 1)
             episode_reward += reward
             current_lives = obs['ale.lives']
 
