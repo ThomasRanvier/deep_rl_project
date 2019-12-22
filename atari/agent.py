@@ -1,12 +1,11 @@
 import torch
 import random
 import cv2
-import time
 
 from config import *
 
 class Agent():
-    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env, device):
+    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env):
         self._rm = rm
         self._policy_net = policy_net
         self._target_net = target_net
@@ -15,11 +14,13 @@ class Agent():
         self._env = env
         self._last_action = random.randint(0, N_ACTIONS - 1)
         self._last_k_frames = []
-        self._device = device
         self._epsilon = INITIAL_EPSILON
         self._iteration = 0
+        self._loss_hist = []
+        self._epsilon_hist = []
 
     def _optimize_model(self):
+        self._loss_hist.append(0)
         # Sample random minibatch
         minibatch = self._rm.sample(MINIBATCH_SIZE)
         # Unpack minibatch
@@ -29,9 +30,16 @@ class Agent():
         state_1_batch = torch.cat(tuple(d[3] for d in minibatch))
 
         # Extract Q-values for the current states from the minibatch
+        # Q(s, a)
+        # We multiply the output by the actions vectors as a mask
+        # ex: output = [.25, .75] * action = [1., 0.] = [.25, 0.]
+        # Then we sum it on dimension 1
+        # ex: sum([.25, 0.]) = .25
+        # We then obtain a tensor that contains one sum for each state in the batch
         q_values = torch.sum(self._policy_net(state_batch) * action_batch, dim=1)
 
         # Extract Q-values for the minibatch next states
+        # ^Q(s', a)
         output_1_batch = self._target_net(state_1_batch)
         # Set y_j to r_j for terminals, otherwise to r_j + GAMMA * max(Q)
         next_q_values = torch.cat(tuple(
@@ -40,13 +48,24 @@ class Agent():
         )).double()
 
         self._optimizer.zero_grad()
-        # We have to understand why we need this
+        # Detach so that we do not minimize the target net
         next_q_values = next_q_values.detach()
-        # MSE loss
+        # loss
         loss = self._criterion(q_values, next_q_values)
         # Back propagation
         loss.backward()
+        # DQN gradient clipping
+        # https://stackoverflow.com/questions/47036246/dqn-q-loss-not-converging
+        for param in self._policy_net.parameters():
+            param.grad.data.clamp_(-1, 1)
         self._optimizer.step()
+
+        # Update target net if needed
+        if self._iteration % TARGET_UPDATE == 0:
+            self._target_net.load_state_dict(self._policy_net.state_dict())
+        # Save models if needed
+        if self._iteration in SAVE_MODELS:
+            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
 
     def _preprocess_state(self, last_k_frames):
         stacked_frames = []
@@ -59,7 +78,7 @@ class Agent():
             #cv2.waitKey(0)
             #cv2.destroyAllWindows()
         state = stacked_frames
-        state = torch.tensor(state, dtype=torch.float64, device=self._device).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
         return state
 
     def _get_last_k_frames(self):
@@ -89,12 +108,8 @@ class Agent():
 
     def _increment_iteration(self):
         self._iteration += 1
+        self._epsilon_hist.append(self._epsilon)
         self._epsilon = max(MINIMAL_EPSILON, self._epsilon - EPSILON_ANNEALING_STEP)
-        if self._iteration in SAVE_MODELS:
-            torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
-            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
-        if self._iteration % TARGET_UPDATE == 0:
-            self._target_net.load_state_dict(self._policy_net.state_dict())
 
     def run_episode(self):
         self._env.reset()
@@ -102,6 +117,8 @@ class Agent():
         episode_reward, last_k_frames, terminal = self._get_last_k_frames()
         # Preprocess the k last frames to get one state
         state = self._preprocess_state(last_k_frames)
+        terminal = False
+        self._loss_hist = []
         while not terminal:
             if random.random() < self._epsilon:
                 # Random action
@@ -113,7 +130,7 @@ class Agent():
                 self._last_action = int(torch.argmax(output))
 
             # Initialize action
-            action = torch.zeros([N_ACTIONS], device=self._device)
+            action = torch.zeros([N_ACTIONS])
             action[self._last_action] = 1.
 
             # Get the last k frames with the cumulated reward and terminal bool
@@ -124,7 +141,7 @@ class Agent():
 
             # Cast all data to same type : unsqueezed tensor
             action = action.unsqueeze(0)
-            iteration_reward = torch.tensor([iteration_reward], dtype=torch.float64, device=self._device).unsqueeze(0)
+            iteration_reward = torch.tensor([iteration_reward], dtype=torch.float64).unsqueeze(0)
             # Save transition to replay memory
             self._rm.push((state, action, iteration_reward, state_1, terminal))
             # Next state becomes current state
@@ -133,7 +150,4 @@ class Agent():
             self._optimize_model()
         if self._iteration >= N_ITERATIONS:
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
-            torch.save(self._target_net, MODELS_DIR + 'target_net_' + FILE_SUFFIX + '_c' + str(N_ITERATIONS) + '.pt')
-        return self._epsilon, self._iteration, episode_reward,
-
-
+        return self._epsilon_hist, sum(self._loss_hist) / len(self._loss_hist), self._iteration, episode_reward
