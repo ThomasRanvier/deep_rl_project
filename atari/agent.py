@@ -60,6 +60,12 @@ class Agent():
             param.grad.data.clamp_(-1, 1)
         self._optimizer.step()
 
+        # del variables to avoid having an increasing memory consumption during the whole training
+        del loss
+        del next_q_values
+        del output_1_batch
+        del q_values
+
         # Update target net if needed
         if self._iteration % TARGET_UPDATE == 0:
             self._target_net.load_state_dict(self._policy_net.state_dict())
