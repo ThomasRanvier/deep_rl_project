@@ -16,7 +16,7 @@ VERBOSE = True
 PLOTS_DIR = 'reward_plots/'
 MODELS_DIR = 'saved_models/'
 FILE_SUFFIX = 'lr' + str(LEARNING_RATE) + '_bs' + str(MINIBATCH_SIZE) + \
-              '_tu' + str(TARGET_UPDATE) + '_it' + str(N_ITERATIONS)
+              '_tu' + str(TARGET_UPDATE) + '_it' + str(N_ITERATIONS) + '_g' + str(GAMMA) + '_ed' + str(EPS_DECAY_FRACTION)
 SAVE_MODELS = [50000, 100000, 150000, 200000, 250000, 300000, 350000]
 N_NO_OP = 30
 NO_OP_ACTION = 0

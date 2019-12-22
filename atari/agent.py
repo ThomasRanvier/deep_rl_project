@@ -146,7 +146,7 @@ class Agent():
                     self._last_action = int(torch.argmax(output))
 
             # Play the selected action
-            _, reward, terminal, obs = self._env.step(self._last_action + 1)
+            _, reward, terminal, obs = self._env.step(self._last_action)
             episode_reward += reward
             current_lives = obs['ale.lives']
 
@@ -170,13 +170,13 @@ class Agent():
             # Next state becomes current state
             state = state_1
             state_frames_indices = state_1_frames_indices
-            # Optimize the nn
-            self._optimize_model()
-
+            # Optimize the nn every k frames
+            if episode_iteration % K_SKIP_FRAMES == K_SKIP_FRAMES - 1:
+                self._optimize_model()
+                # increment total iterations count and epsilon, once every 4 frames
+                self._increment_iteration()
             # increment episode iteration count to know when to select a new action
             episode_iteration += 1
-            # increment total iterations count and epsilon
-            self._increment_iteration()
             if current_lives < lives and not terminal:
                 lives = current_lives
                 self._no_op()
