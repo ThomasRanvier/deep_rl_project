@@ -13,7 +13,7 @@ class Agent():
         self._criterion = criterion
         self._env = env
         self._last_action = random.randint(0, N_ACTIONS - 1)
-        self._last_k_frames = []
+        self._last_k_frames_indices = []
         self._epsilon = INITIAL_EPSILON
         self._iteration = 0
         self._loss_hist = []
@@ -23,10 +23,10 @@ class Agent():
         # Sample random minibatch
         minibatch = self._rm.sample(MINIBATCH_SIZE)
         # Unpack minibatch
-        state_batch = torch.cat(tuple(d[0] for d in minibatch))
+        state_batch = torch.cat(tuple(self._get_state_from_indices(d[0]) for d in minibatch))
         action_batch = torch.cat(tuple(d[1] for d in minibatch))
         reward_batch = torch.cat(tuple(d[2] for d in minibatch))
-        state_1_batch = torch.cat(tuple(d[3] for d in minibatch))
+        state_1_batch = torch.cat(tuple(self._get_state_from_indices(d[3]) for d in minibatch))
 
         # Extract Q-values for the current states from the minibatch
         # Q(s, a)
@@ -49,9 +49,9 @@ class Agent():
         self._optimizer.zero_grad()
         # Detach so that we do not minimize the target net
         next_q_values = next_q_values.detach()
-        # loss
+        # False
         loss = self._criterion(q_values, next_q_values)
-        self._loss_hist.append(float(loss))
+        self._loss_hist.append(loss.item())
         # Back propagation
         loss.backward()
 
@@ -82,31 +82,40 @@ class Agent():
     def _no_op(self):
         # Perform N times the no op action
         # Those N iterations are not part of the learning process (counter not incremented, epsilon unchanged, etc.)
-        self._last_k_frames = []
+        self._last_k_frames_indices = []
         for _ in range(N_NO_OP):
             # Play no op action
             _, _, _, _ = self._env.step(NO_OP_ACTION)
             # Get resulting frame
             self._get_frame()
 
-    def _get_frame(self):
-        img = self._env.render(mode='rgb_array')
-        self._last_k_frames.append(img)
-        if len(self._last_k_frames) > K_SKIP_FRAMES:
-            self._last_k_frames.pop(0)
+    def _preprocess_frame(self, f):
+        f = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+        f = f[58:-18, 8:-8]
+        f = cv2.resize(f, (84, 84), interpolation=cv2.INTER_AREA)
+        #cv2.imshow('image', f)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
+        return f
 
-    def _get_current_state(self):
-        stacked_frames = []
-        for f in self._last_k_frames:
-            #f = f[:, :, 0] * 0.299 + f[:, :, 1] * 0.587 + f[:, :, 2] * 0.114
-            f = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
-            f = f[58:-18, 8:-8]
-            f = cv2.resize(f, (84, 84), interpolation=cv2.INTER_AREA)
-            stacked_frames.append(f)
-            #cv2.imshow('image', f)
-            #cv2.waitKey(0)
-            #cv2.destroyAllWindows()
-        state = stacked_frames
+    """
+    Get and preprocess one frame from the game
+    Also, add it to the replay memory
+    """
+    def _get_frame(self):
+        f = self._preprocess_frame(self._env.render(mode='rgb_array'))
+        f_idx = self._rm.add_frame(f)
+        self._last_k_frames_indices.append(f_idx)
+        if len(self._last_k_frames_indices) > K_SKIP_FRAMES:
+            self._last_k_frames_indices.pop(0)
+
+    """
+    Return a state: 4 frames of 84x84
+    """
+    def _get_state_from_indices(self, f_indices):
+        state = []
+        for f_idx in f_indices:
+            state.append(self._rm.get_frame(f_idx))
         state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
         return state
 
@@ -115,14 +124,15 @@ class Agent():
         self._no_op()
         episode_reward = 0
         # Preprocess the k last frames to get one state
-        state = self._get_current_state()
+        state = self._get_state_from_indices(self._last_k_frames_indices)
+        state_frames_indices = [f_idx for f_idx in self._last_k_frames_indices]
         # Initialize episode variables
         terminal = False
         episode_iteration = 0
         lives = 5
         self._loss_hist = []
         while not terminal:
-            if DISPLAY_SCREEN and lives <= 1:
+            if DISPLAY_SCREEN:
                 self._env.render(mode='human')
             # Select new action every k frames
             if episode_iteration % K_SKIP_FRAMES == 0:
@@ -147,17 +157,19 @@ class Agent():
             self._get_frame()
 
             # Get the new state
-            state_1 = self._get_current_state()
+            state_1 = self._get_state_from_indices(self._last_k_frames_indices)
+            state_1_frames_indices = [f_idx for f_idx in self._last_k_frames_indices]
             # Cast all data to same type : unsqueezed tensor
             action = torch.zeros([N_ACTIONS])
             action[self._last_action] = 1.
             action = action.unsqueeze(0)
             reward = torch.tensor([reward], dtype=torch.float64).unsqueeze(0)
             # Save transition to replay memory
-            self._rm.push((state, action, reward, state_1, terminal))
+            self._rm.push((state_frames_indices, action, reward, state_1_frames_indices, terminal))
 
             # Next state becomes current state
             state = state_1
+            state_frames_indices = state_1_frames_indices
             # Optimize the nn
             self._optimize_model()
 
