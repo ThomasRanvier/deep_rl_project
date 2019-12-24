@@ -136,15 +136,15 @@ class Agent():
             if DISPLAY_SCREEN:
                 self._env.render(mode='human')
             # Select new action every k frames
-            if n_frames % K_SKIP_FRAMES == 0:
-                if random.random() < self._epsilon:
-                    # Random action
-                    self._last_action = random.randint(0, N_ACTIONS - 1)
-                else:
-                    # Get output from nn applied on last k preprocessed frames
-                    with torch.no_grad():
-                        output = self._policy_net(state)
-                    self._last_action = int(torch.argmax(output))
+            # if n_frames % K_SKIP_FRAMES == 0:
+            if random.random() < self._epsilon:
+                # Random action
+                self._last_action = random.randint(0, N_ACTIONS - 1)
+            else:
+                # Get output from nn applied on last k preprocessed frames
+                with torch.no_grad():
+                    output = self._policy_net(state)
+                self._last_action = int(torch.argmax(output))
 
             # Play the selected action
             _, reward, terminal, obs = self._env.step(self._last_action)
@@ -172,10 +172,10 @@ class Agent():
             state = state_1
             state_frames_indices = state_1_frames_indices
             # Optimize the nn every k frames
-            if n_frames % K_SKIP_FRAMES == K_SKIP_FRAMES - 1:
-                self._optimize_model()
-                # increment total iterations count and epsilon, once every 4 frames
-                self._increment_iteration()
+            # if n_frames % K_SKIP_FRAMES == K_SKIP_FRAMES - 1:
+            self._optimize_model()
+            # increment total iterations count and epsilon, once every 4 frames
+            self._increment_iteration()
             # increment episode iteration count to know when to select a new action
             n_frames += 1
             if current_lives < lives and not terminal:
