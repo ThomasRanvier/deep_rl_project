@@ -5,7 +5,7 @@ import cv2
 from config import *
 
 class Agent():
-    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env):
+    def __init__(self, rm, policy_net, target_net, optimizer, criterion, env, device):
         self._rm = rm
         self._policy_net = policy_net
         self._target_net = target_net
@@ -18,6 +18,7 @@ class Agent():
         self._iteration = 0
         self._loss_hist = []
         self._epsilon_hist = []
+        self._device = device
 
     def _optimize_model(self):
         # Sample random minibatch
@@ -116,7 +117,7 @@ class Agent():
         state = []
         for f_idx in f_indices:
             state.append(self._rm.get_frame(f_idx))
-        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float64, device=self._device).unsqueeze(0)
         return state
 
     def run_episode(self):
@@ -160,10 +161,10 @@ class Agent():
             state_1 = self._get_state_from_indices(self._last_k_frames_indices)
             state_1_frames_indices = [f_idx for f_idx in self._last_k_frames_indices]
             # Cast all data to same type : unsqueezed tensor
-            action = torch.zeros([N_ACTIONS])
+            action = torch.zeros([N_ACTIONS], device=self._device)
             action[self._last_action] = 1.
             action = action.unsqueeze(0)
-            reward = torch.tensor([reward], dtype=torch.float64).unsqueeze(0)
+            reward = torch.tensor([reward], dtype=torch.float64, device=self._device).unsqueeze(0)
             # Save transition to replay memory
             self._rm.push((state_frames_indices, action, reward, state_1_frames_indices, terminal))
 

@@ -18,7 +18,12 @@ class ReplayMemory():
         f_idx = None
         i = 0
         for f in self._frames:
-            if (f == frame).all():
+            identical = True
+            for i in range(len(f)):
+                if f[i] != frame[i]:
+                    identical = False
+                    break
+            if identical:
                 f_idx = i
                 break
             i += 1

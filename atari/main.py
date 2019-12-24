@@ -2,6 +2,7 @@ import gym
 import matplotlib.pyplot as plt
 import torch.optim as optim
 import torch.nn as nn
+import torch
 import time
 
 from replay_memory import ReplayMemory
@@ -27,16 +28,17 @@ def display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, save = Fa
         plt.savefig(PLOTS_DIR + FILE_SUFFIX + '.png')
 
 if __name__ == '__main__':
-    print('eps annealing step: {}'.format(EPSILON_ANNEALING_STEP), flush=True)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Used device: {} - eps annealing step: {}'.format(device, EPSILON_ANNEALING_STEP), flush=True)
     rm = ReplayMemory(RM_CAPACITY)
-    policy_net = Net().double()
-    target_net = Net().double()
+    policy_net = Net().double().to(device)
+    target_net = Net().double().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
     optimizer = optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     criterion = nn.SmoothL1Loss()# MSELoss()
     env = gym.make('Breakout-ramNoFrameskip-v4')
-    agent = Agent(rm, policy_net, target_net, optimizer, criterion, env)
+    agent = Agent(rm, policy_net, target_net, optimizer, criterion, env, device)
     episode_x = [0]
     reward_y = [0]
     loss_y = [1]
