@@ -29,19 +29,22 @@ def display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, save = Fa
 
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Used device: {} - eps annealing step: {}'.format(device, EPSILON_ANNEALING_STEP), flush=True)
-    rm = ReplayMemory(RM_CAPACITY)
-    policy_net = Net().double().to(device)
-    target_net = Net().double().to(device)
+    print('Used device: {} - eps annealing step 1: {} - eps annealing step 2: {}'
+          .format(device, EPSILON_ANNEALING_STEP_1, EPSILON_ANNEALING_STEP_2), flush=True)
+    print('Total iterations: {} - rm capacity: {} - bs: {}'
+          .format(N_ITERATIONS, RM_CAPACITY, MINIBATCH_SIZE), flush=True)
+    rm = ReplayMemory(RM_CAPACITY, device)
+    policy_net = Net(heavy_model=True).double().to(device)
+    target_net = Net(heavy_model=True).double().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
-    optimizer = optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.RMSprop(policy_net.parameters(), lr=.00025, alpha=.99, eps=1e-6)# optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
     criterion = nn.SmoothL1Loss()# MSELoss()
     env = gym.make('Breakout-ramNoFrameskip-v4')
     agent = Agent(rm, policy_net, target_net, optimizer, criterion, env, device)
     episode_x = [0]
     reward_y = [0]
-    loss_y = [1]
+    loss_y = [0]
     iterations_x = []
     if DYNAMIC_PLOT:
         plt.ion()
