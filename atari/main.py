@@ -34,8 +34,8 @@ if __name__ == '__main__':
     print('Total iterations: {} - rm capacity: {} - bs: {}'
           .format(N_ITERATIONS, RM_CAPACITY, MINIBATCH_SIZE), flush=True)
     rm = ReplayMemory(RM_CAPACITY, device)
-    policy_net = Net(heavy_model=True).double().to(device)
-    target_net = Net(heavy_model=True).double().to(device)
+    policy_net = Net(heavy_model=False).double().to(device)
+    target_net = Net(heavy_model=False).double().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
     optimizer = optim.RMSprop(policy_net.parameters(), lr=.00025, alpha=.99, eps=1e-6)# optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)

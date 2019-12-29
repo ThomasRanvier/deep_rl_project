@@ -138,7 +138,7 @@ class Agent():
                     self._last_action = int(torch.argmax(output))
 
             # Play the selected action
-            _, reward, terminal, obs = self._env.step(self._last_action)
+            _, reward, terminal, obs = self._env.step(self._last_action + 1)
             episode_reward += reward
             # Used to notify the agent that it lost a life in this state
             rm_terminal = terminal
