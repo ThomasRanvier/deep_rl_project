@@ -22,10 +22,19 @@ class Agent():
         # Sample random minibatch
         minibatch = self._rm.sample(MINIBATCH_SIZE)
         # Unpack minibatch
-        state_batch = torch.cat(tuple(d[0] for d in minibatch))
-        action_batch = torch.cat(tuple(d[1] for d in minibatch))
-        reward_batch = torch.cat(tuple(d[2] for d in minibatch))
-        state_1_batch = torch.cat(tuple(d[3] for d in minibatch))
+        states = []
+        actions = []
+        rewards = []
+        states_1 = []
+        for d in minibatch:
+            states.append(d[0])
+            actions.append(d[1])
+            rewards.append(d[2])
+            states_1.append(d[3])
+        state_batch = torch.cat(states)
+        action_batch = torch.cat(actions)
+        reward_batch = torch.cat(rewards)
+        state_1_batch = torch.cat(states_1)
 
         # Extract Q-values for the current states from the minibatch
         # Q(s, a)
@@ -99,7 +108,7 @@ class Agent():
             # Increment iteration counter and update epsilon, etc.
             self._increment_iteration()
             episode_reward += reward
-            
+
             # Scale the reward depending on the distance of the cart from the center
             if reward > 0:
                 reward -= abs(state_1[0]) / 4.8
