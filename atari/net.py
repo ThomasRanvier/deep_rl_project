@@ -25,8 +25,10 @@ class Net(nn.Module):
         # Initialize Torch variable of the two linear layers
         self.linear_1 = torch.nn.Linear(9 * 9 * out_1 * 2, fc_hidden)
         nn.init.xavier_normal_(self.linear_1.weight)
-        self.linear_2 = torch.nn.Linear(fc_hidden, N_ACTIONS)
-        nn.init.xavier_normal_(self.linear_2.weight)
+        self.adv = torch.nn.Linear(fc_hidden, N_ACTIONS)
+        nn.init.xavier_normal_(self.adv.weight)
+        self.v = torch.nn.Linear(fc_hidden, 1)
+        nn.init.xavier_normal_(self.v.weight)
 
     def forward(self, x):
         # conv, relu, max pool, conv, relu, max pool, fc, relu, dropout, fc
@@ -44,5 +46,7 @@ class Net(nn.Module):
         x = x.reshape(x.size(0), -1)
         x = self.linear_1(x)
         x = F.relu(x)
-        x = self.linear_2(x)
-        return x
+        adv = self.adv(x)
+        v = self.v(x)
+        q = v + (adv - torch.mean(adv, dim=1, keepdim=True))
+        return q
