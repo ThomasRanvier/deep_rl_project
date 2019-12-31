@@ -1,6 +1,5 @@
 import torch
 import random
-import cv2
 
 from config import *
 
@@ -18,11 +17,10 @@ class Agent():
         self._loss_hist = []
         self._epsilon_hist = []
         self._device = device
-        self._current_state_id = -K_SKIP_FRAMES# Start counter at -K_SKIP_FRAMES so that state 0 corresponds to the first K frames of the memory
 
     def _optimize_model(self):
         # Sample random minibatch, it is already unpacked and ready to use
-        state_batch, action_batch, reward_batch, state_1_batch, terminal_batch = self._rm.sample(MINIBATCH_SIZE)
+        state_batch, action_batch, reward_batch, state_1_batch, terminal_batch = self._rm.get_minibatch()
 
         # Extract Q-values for the current states from the minibatch
         # Q(s, a)
@@ -51,12 +49,6 @@ class Agent():
         # Back propagation
         loss.backward()
 
-        # del variables just in case
-        del loss
-        del next_q_values
-        del output_1_batch
-        del q_values
-
         # DQN gradient clipping
         # https://stackoverflow.com/questions/47036246/dqn-q-loss-not-converging
         for param in self._policy_net.parameters():
@@ -81,47 +73,12 @@ class Agent():
         self._iteration += 1
         self._epsilon_hist.append(self._epsilon)
 
-    def _no_op(self):
-        # Perform N times the no op action
-        # Those N iterations are not part of the learning process (counter not incremented, epsilon unchanged, etc.)
-        for _ in range(random.randint(1, N_NO_OP)):
-            # Play no op action
-            _, _, _, _ = self._env.step(NO_OP_ACTION)
-        # Once no op actions are done we get the current frame and add it K times to the rm
-        # Which means that each episode we 'skip' K states
-        self._get_frame(n_frames=K_SKIP_FRAMES)
-
-    def _preprocess_frame(self, f):
-        f = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
-        f = f[34:-18, :]
-        f = cv2.resize(f, (84, 84), interpolation=cv2.INTER_AREA)
-        # cv2.imshow('image', f)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-        # exit()
-        return f
-
-    """
-    Get and preprocess one frame from the game
-    Also, add it to the replay memory
-    Each frame means new state, so we update current_state_id
-    """
-    def _get_frame(self, n_frames = 1):
-        f = self._preprocess_frame(self._env.render(mode='rgb_array'))
-        for _ in range(n_frames):
-            self._rm.add_frame(f)
-        self._current_state_id += n_frames
-
     def run_episode(self):
         self._env.reset()
-        self._no_op()
         episode_reward = 0
-        # Request the last state to the rm
-        state = self._rm.get_state(self._current_state_id)
         # Initialize episode variables
         terminal = False
         n_frames = 0
-        lives = 5
         self._loss_hist = []
         while not terminal:
             if DISPLAY_SCREEN:
@@ -134,34 +91,22 @@ class Agent():
                 else:
                     # Get output from nn applied on last k preprocessed frames
                     with torch.no_grad():
-                        output = self._policy_net(state)
+                        output = self._policy_net(self._env.state)
                     self._last_action = int(torch.argmax(output))
 
             # Play the selected action
-            _, reward, terminal, obs = self._env.step(self._last_action + 1)
+            processed_new_frame, reward, terminal, terminal_life_lost = self._env.step(self._last_action + 1)
             episode_reward += reward
-            # Used to notify the agent that it lost a life in this state
-            rm_terminal = terminal
-            current_lives = obs['ale.lives']
-            if current_lives < lives or terminal:
-                rm_terminal = True
-                lives = current_lives
             # Clipping the reward, even if I don't really see when the reward would be more than 1 or less than 0...
-            reward = 1 if reward > 0 else (-1 if reward < 0 else 0)
-
-            # Get resulting frame
-            self._get_frame()
+            clipped_reward = 1 if reward > 0 else (-1 if reward < 0 else 0)
 
             # Save transition to replay memory
-            self._rm.push(self._current_state_id - 1, self._last_action, reward, self._current_state_id, rm_terminal)
-
-            # Next state becomes current state
-            state = self._rm.get_state(self._current_state_id)
+            self._rm.add_experience(self._last_action, processed_new_frame, clipped_reward, terminal_life_lost)
 
             # Optimize the nn every k frames
             if n_frames % K_SKIP_FRAMES == K_SKIP_FRAMES - 1:
                 # Start params update once RM is populated enough
-                if len(self._rm) >= RM_START_SIZE:
+                if self._rm.count >= RM_START_SIZE:
                     self._optimize_model()
                 # increment total iterations count and epsilon, once every 4 frames
                 self._increment_iteration()

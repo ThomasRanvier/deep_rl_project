@@ -1,53 +1,85 @@
+import numpy as np
 import random
 import torch
 
 from config import *
 
-class ReplayMemory():
-    def __init__(self, capacity, device):
-        self._capacity = capacity
+class ReplayMemory(object):
+    def __init__(self, device):
+        self.size = RM_CAPACITY
+        self.frame_height = 84
+        self.frame_width = 84
+        self.agent_history_length = K_SKIP_FRAMES
+        self.batch_size = MINIBATCH_SIZE
+        self.count = 0
+        self.current = 0
         self._device = device
-        self._memory = []
-        self._frames = []
 
-    def push(self, state_id, chosen_action, reward, next_state_id, terminal):
-        # Cast all data to same type : unsqueezed tensor
-        action = torch.zeros([N_ACTIONS], device=self._device)
-        action[chosen_action] = 1.
-        action = action.unsqueeze(0)
-        reward = torch.tensor([reward], dtype=torch.float64, device=self._device).unsqueeze(0)
-        # Initialize the transition tuple
-        transition = (state_id, action, reward, next_state_id, terminal)
-        # Push it to the memory
-        if len(self._memory) >= self._capacity:
-            self._memory.pop(0)
-        self._memory.append(transition)
+        # Pre-allocate memory
+        self.actions = np.empty([self.size, N_ACTIONS], dtype=np.int32)
+        self.rewards = np.empty([self.size, 1], dtype=np.float32)
+        self.frames = np.empty((self.size, self.frame_height, self.frame_width), dtype=np.uint8)
+        self.terminal_flags = np.empty(self.size, dtype=np.bool)
 
-    def sample(self, batch_size):
-        # Sample random minibatch
-        minibatch = random.sample(self._memory, min(len(self._memory), batch_size))
-        # Unpack minibatch
-        state_batch = torch.cat(tuple(self.get_state(d[0]) for d in minibatch))
-        action_batch = torch.cat(tuple(d[1] for d in minibatch))
-        reward_batch = torch.cat(tuple(d[2] for d in minibatch))
-        state_1_batch = torch.cat(tuple(self.get_state(d[3]) for d in minibatch))
-        terminal_batch = tuple(d[4] for d in minibatch)
-        return state_batch, action_batch, reward_batch, state_1_batch, terminal_batch
+        # Pre-allocate memory for the states and new_states in a minibatch
+        self.states = np.empty((self.batch_size, self.agent_history_length,
+                                self.frame_height, self.frame_width), dtype=np.uint8)
+        self.new_states = np.empty((self.batch_size, self.agent_history_length,
+                                    self.frame_height, self.frame_width), dtype=np.uint8)
+        self.indices = np.empty(self.batch_size, dtype=np.int32)
 
-    def add_frame(self, frame):
-        # Push the last frame to the frames memory
-        if len(self._frames) >= self._capacity + K_SKIP_FRAMES:
-            self._frames.pop(0)
-        self._frames.append(frame)
+    def add_experience(self, action, frame, reward, terminal):
+        """
+        Args:
+            action: An integer between 0 and env.action_space.n - 1
+                determining the action the agent perfomed
+            frame: A (84, 84, 1) frame of an Atari game in grayscale
+            reward: A float determining the reward the agend received for performing an action
+            terminal: A bool stating whether the episode terminated
+        """
+        if frame.shape != (self.frame_height, self.frame_width):
+            raise ValueError('Dimension of frame is wrong!')
+        act = [0.] * N_ACTIONS
+        act[action] = 1.
+        self.actions[self.current, ...] = act
+        self.frames[self.current, ...] = frame
+        self.rewards[self.current, 0] = reward
+        self.terminal_flags[self.current] = terminal
+        self.count = max(self.count, self.current + 1)
+        self.current = (self.current + 1) % self.size
 
-    def get_state(self, state_id):
-        # Extract the K frames corresponding to the state_id
-        frames = []
-        for i in range(state_id, state_id + K_SKIP_FRAMES):
-            frames.append(self._frames[i % (self._capacity + K_SKIP_FRAMES)])
-        # Cast the K frames to a tensor
-        state = torch.tensor(frames, dtype=torch.float64, device=self._device).unsqueeze(0)
-        return state
+    def _get_state(self, index):
+        if self.count is 0:
+            raise ValueError('The replay memory is empty!')
+        if index < self.agent_history_length - 1:
+            raise ValueError('Index must be min ' + str(self.agent_history_length - 1))
+        return self.frames[index - self.agent_history_length + 1:index + 1, ...]
 
-    def __len__(self):
-        return len(self._memory)
+    def _get_valid_indices(self):
+        for i in range(self.batch_size):
+            while True:
+                index = random.randint(self.agent_history_length, self.count - 1)
+                if index < self.agent_history_length:
+                    continue
+                if index >= self.current and index - self.agent_history_length <= self.current:
+                    continue
+                if self.terminal_flags[index - self.agent_history_length:index].any():
+                    continue
+                break
+            self.indices[i] = index
+
+    def get_minibatch(self):
+        if self.count < self.agent_history_length:
+            raise ValueError('Not enough memories to get a minibatch')
+
+        self._get_valid_indices()
+
+        for i, idx in enumerate(self.indices):
+            self.states[i] = self._get_state(idx - 1)
+            self.new_states[i] = self._get_state(idx)
+
+        return torch.from_numpy(self.states).double().to(self._device), \
+               torch.from_numpy(self.actions[self.indices]).double().to(self._device), \
+               torch.from_numpy(self.rewards[self.indices]).double().to(self._device), \
+               torch.from_numpy(self.new_states).double().to(self._device),\
+               self.terminal_flags[self.indices].tolist()

@@ -1,10 +1,10 @@
-import gym
 import matplotlib.pyplot as plt
 import torch.optim as optim
 import torch.nn as nn
 import torch
 import time
 
+from atari import Atari
 from replay_memory import ReplayMemory
 from net import Net
 from agent import Agent
@@ -33,19 +33,20 @@ if __name__ == '__main__':
           .format(device, EPSILON_ANNEALING_STEP_1, EPSILON_ANNEALING_STEP_2), flush=True)
     print('Total iterations: {} - rm capacity: {} - bs: {}'
           .format(N_ITERATIONS, RM_CAPACITY, MINIBATCH_SIZE), flush=True)
-    rm = ReplayMemory(RM_CAPACITY, device)
+    rm = ReplayMemory(device)
     policy_net = Net(heavy_model=True).double().to(device)
     target_net = Net(heavy_model=True).double().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
     optimizer = optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)# optim.RMSprop(policy_net.parameters(), lr=.00025, alpha=.99, eps=1e-6)
     criterion = nn.SmoothL1Loss()# MSELoss()
-    env = gym.make('Breakout-ramNoFrameskip-v4')
+    env = Atari(device)
     agent = Agent(rm, policy_net, target_net, optimizer, criterion, env, device)
     episode_x = [0]
     reward_y = [0]
     loss_y = [0]
     iterations_x = []
+    epsilon_y = []
     if DYNAMIC_PLOT:
         plt.ion()
     fig, (ax1, ax3) = plt.subplots(2)
@@ -66,13 +67,13 @@ if __name__ == '__main__':
             remaining_estimation = (total_estimated_time - (end - init_start)) / 60
             print(
                 'Ep {5} - ite {0}/{1} - reward {2} - eps {3:.2f} - loss {8:.2f} - rm load {4:.2f}% - uptime {6:.2f}m - remaining {7:.2f}m'
-                    .format(iterations, N_ITERATIONS, int(round(episode_reward)), epsilon_y[-1], 100. * len(rm) / RM_CAPACITY,
+                    .format(iterations, N_ITERATIONS, int(round(episode_reward)), epsilon_y[-1], 100. * rm.count / RM_CAPACITY,
                             episode, (end - init_start) / 60, remaining_estimation, episode_loss), flush=True)
         if DYNAMIC_PLOT:
             display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, ax1=ax1, ax2=ax2, ax3=ax3, fig=fig)
         episode += 1
-    env.close()
     if DYNAMIC_PLOT:
         plt.ioff()
         plt.show()
     display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, save=True)
+
