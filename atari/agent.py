@@ -4,6 +4,10 @@ import random
 from config import *
 
 class Agent():
+    """
+    The DQN agent, implementation of the DQN algorithm
+    """
+
     def __init__(self, rm, policy_net, target_net, optimizer, criterion, env, device):
         self._rm = rm
         self._policy_net = policy_net
@@ -19,6 +23,15 @@ class Agent():
         self._device = device
 
     def _optimize_model(self):
+        """
+        Perform one params update
+        Request a minibatch from the replay memory
+        Get the q-values of the states and action from the policy network
+        Get the q-values of the next states from the target network
+        Performs a back-propagation and an optimizer step
+        The target network is updated and the current model is saved if needed
+        The epsilon value is updated
+        """
         # Sample random minibatch, it is already unpacked and ready to use
         state_batch, action_batch, reward_batch, state_1_batch, terminal_batch = self._rm.get_minibatch()
 
@@ -74,6 +87,9 @@ class Agent():
         self._epsilon_hist.append(self._epsilon)
 
     def run_episode(self):
+        """
+        Run one epiode
+        """
         self._env.reset()
         episode_reward = 0
         # Initialize episode variables
@@ -91,7 +107,7 @@ class Agent():
                 else:
                     # Get output from nn applied on last k preprocessed frames
                     with torch.no_grad():
-                        output = self._policy_net(self._env.state)
+                        output = self._policy_net(self._env.get_state())
                     self._last_action = int(torch.argmax(output))
 
             # Play the selected action
@@ -106,7 +122,7 @@ class Agent():
             # Optimize the nn every k frames
             if n_frames % K_SKIP_FRAMES == K_SKIP_FRAMES - 1:
                 # Start params update once RM is populated enough
-                if self._rm.count >= RM_START_SIZE:
+                if len(self._rm) >= RM_START_SIZE:
                     self._optimize_model()
                 # increment total iterations count and epsilon, once every 4 frames
                 self._increment_iteration()
