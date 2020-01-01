@@ -28,7 +28,6 @@ def display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, save = Fa
         plt.savefig(PLOTS_DIR + FILE_SUFFIX + '.png')
 
 if __name__ == '__main__':
-    print(SAVE_MODELS)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Used device: {} - eps annealing step 1: {} - eps annealing step 2: {}'
           .format(device, EPSILON_ANNEALING_STEP_1, EPSILON_ANNEALING_STEP_2), flush=True)

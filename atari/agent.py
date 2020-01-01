@@ -1,5 +1,6 @@
 import torch
 import random
+import time
 
 from config import *
 
@@ -33,7 +34,9 @@ class Agent():
         The epsilon value is updated
         """
         # Sample random minibatch, it is already unpacked and ready to use
+        start = time.time()
         state_batch, action_batch, reward_batch, state_1_batch, terminal_batch = self._rm.get_minibatch()
+        print(time.time() - start)
 
         # Extract Q-values for the current states from the minibatch
         # Q(s, a)

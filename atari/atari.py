@@ -14,7 +14,6 @@ class Atari(object):
         self._env = gym.make('Breakout-ramNoFrameskip-v4')
         if save_gif:
             self._env = gym.wrappers.Monitor(self._env, "recording", force=True)
-        self._state = None
         self._last_lives = 0
         self._device = device
         self._last_k_frames = []
@@ -32,11 +31,10 @@ class Atari(object):
         for _ in range(random.randint(1, N_NO_OP)):
             _, _, _, _ = self._env.step(NO_OP_ACTION)
         processed_frame = self._preprocess_frame(self._env.render(mode='rgb_array'))
+        # Create the initial state with four identical frames
         self._last_k_frames = []
         for _ in range(K_SKIP_FRAMES):
             self._last_k_frames.append(processed_frame)
-        # Create the initial state with four identical frames
-        self._state = torch.tensor(self._last_k_frames, dtype=torch.float64, device=self._device).unsqueeze(0)
 
     def step(self, action):
         """
@@ -47,17 +45,16 @@ class Atari(object):
         :param action: Integer, action to perform
         :return: (processed_new_frame, reward, terminal, terminal_life_lost)
         """
-        _, reward, terminal, info = self._env.step(action)  # (5★)
+        _, reward, terminal, obs = self._env.step(action)
 
         terminal_life_lost = terminal
-        if info['ale.lives'] < self._last_lives:
+        if obs['ale.lives'] < self._last_lives:
             terminal_life_lost = True
-        self._last_lives = info['ale.lives']
+        self._last_lives = obs['ale.lives']
 
         processed_new_frame = self._preprocess_frame(self._env.render(mode='rgb_array'))
         self._last_k_frames.append(processed_new_frame)
         self._last_k_frames.pop(0)
-        self._state = torch.tensor(self._last_k_frames, dtype=torch.float64, device=self._device).unsqueeze(0)
 
         return processed_new_frame, reward, terminal, terminal_life_lost
 
@@ -78,7 +75,10 @@ class Atari(object):
         return f
 
     def get_state(self):
-        return self._state
+        """
+        Process the k last frames to an unsqueezed tensor on the selected device and return it as the current state
+        """
+        return torch.tensor(self._last_k_frames, dtype=torch.float64, device=self._device).unsqueeze(0)
 
     def render(self, mode = 'human'):
         if mode == 'human':

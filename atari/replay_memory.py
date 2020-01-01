@@ -95,6 +95,7 @@ class ReplayMemory(object):
             self._states[i] = self._get_state(idx - 1)
             self._next_states[i] = self._get_state(idx)
 
+        # Cast to double tensors on selected device before returning
         return torch.from_numpy(self._states).double().to(self._device), \
                torch.from_numpy(self._actions[self._indices]).double().to(self._device), \
                torch.from_numpy(self._rewards[self._indices]).double().to(self._device), \
