@@ -1,6 +1,7 @@
 ## Perfect model
 
 Model at the 650000th iteration.
+Always 500.
 
 Parameters:
 * learning rate: .00005

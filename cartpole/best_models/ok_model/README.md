@@ -1,7 +1,7 @@
 ## OK model
 
 Model at the 300000th iteration.
-Reward: usualy around 300.
+Reward: usually around 300.
 
 Parameters:
 * learning rate: .0001
