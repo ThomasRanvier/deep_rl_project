@@ -10,8 +10,10 @@ class Atari(object):
     Wrapper used to simplify interactions with the environment
     """
 
-    def __init__(self, device):
+    def __init__(self, device, save_gif = False):
         self._env = gym.make('Breakout-ramNoFrameskip-v4')
+        if save_gif:
+            self._env = gym.wrappers.Monitor(self._env, "recording", force=True)
         self._state = None
         self._last_lives = 0
         self._device = device
@@ -78,3 +80,6 @@ class Atari(object):
     def get_state(self):
         return self._state
 
+    def render(self, mode = 'human'):
+        if mode == 'human':
+            self._env.render(mode=mode)

@@ -1,37 +1,36 @@
-import gym
 import matplotlib.pyplot as plt
 import torch
+from atari import Atari
 
 N_EPISODES = 1
 MEAN_K = 10
 DISPLAY = False
 DYNAMIC = False
 SAVE_GIF = True
-#MODEL_PATH = 'best_models/perfect_model/model.pt' # Always 500
-#MODEL_PATH = 'best_models/good_model/model.pt' # Usually around 450
-MODEL_PATH = 'best_models/ok_model/model.pt' # Usually around 300
+MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs64_tu2500_it3500000_g0.999_ed0.42857142857142855_c1900000.pt'
 
 def run_episode(net, env):
-    state = env.reset()
-    state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+    env.reset()
     episode_reward = 0
     terminal = False
+    terminal_life_loss = False
     while not terminal:
         if DISPLAY:
             env.render(mode='human')
-        output = net(state)
-        action_index = int(torch.argmax(output))
-        state, reward, terminal, _ = env.step(action_index)
-        state = torch.tensor(state, dtype=torch.float64).unsqueeze(0)
+        if not terminal_life_loss:
+            output = net(env.get_state())
+            action_index = int(torch.argmax(output)) + 1
+        else:
+            action_index = 1
+        _, reward, terminal, terminal_life_loss = env.step(action_index)
         episode_reward += reward
     return episode_reward
 
 if __name__ == "__main__":
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     policy_net = torch.load(MODEL_PATH).double()
     policy_net.eval()
-    env = gym.make('CartPole-v1')
-    if SAVE_GIF:
-        env = gym.wrappers.Monitor(env, "recording", force=True)
+    env = Atari(device, save_gif=SAVE_GIF)
     ep = []
     rew = []
     ep_mean = []
@@ -60,7 +59,6 @@ if __name__ == "__main__":
                 ax.plot(ep_mean, rew_mean, color='red')
                 ax.tick_params(axis='y', labelcolor='red')
     print('Reward mean:', total / N_EPISODES)
-    env.close()
     if DYNAMIC:
         plt.ioff()
     else:
