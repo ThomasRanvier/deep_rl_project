@@ -1,6 +1,5 @@
 import torch
 import random
-import time
 
 from config import *
 
@@ -22,6 +21,7 @@ class Agent():
         self._loss_hist = []
         self._epsilon_hist = []
         self._device = device
+        self._batch_indices = list(range(MINIBATCH_SIZE))
 
     def _optimize_model(self):
         """
@@ -34,31 +34,27 @@ class Agent():
         The epsilon value is updated
         """
         # Sample random minibatch, it is already unpacked and ready to use
-        start = time.time()
         state_batch, action_batch, reward_batch, state_1_batch, terminal_batch = self._rm.get_minibatch()
-        print(time.time() - start)
 
         # Extract Q-values for the current states from the minibatch
         # Q(s, a)
-        # We multiply the output by the actions vectors as a mask
-        # ex: output = [.25, .75] * action = [1., 0.] = [.25, 0.]
-        # Then we sum it on dimension 1
-        # ex: sum([.25, 0.]) = .25
-        # We then obtain a tensor that contains one sum for each state in the batch
-        q_values = torch.sum(self._policy_net(state_batch) * action_batch, dim=1)
+        # We get an output for the state and all possible actions from the policy net
+        # Then we select only the q-values corresponding to the performed action
+        q_values = self._policy_net(state_batch)
+        q_values = q_values[self._batch_indices, action_batch.tolist()]
 
         # Extract Q-values for the minibatch next states
         # ^Q(s', a)
-        output_1_batch = self._target_net(state_1_batch)
+        # Detach so that we do not minimize the target net
+        next_q_values = self._target_net(state_1_batch).detach().double()
+        # Double DQN, https://github.com/ShangtongZhang/DeepRL/blob/master/deep_rl/agent/DQN_agent.py
+        best_actions_indices = torch.argmax(self._policy_net(state_1_batch), dim=-1)
+        # Select the actions depending on the argmax performed on policy net output
+        next_q_values = next_q_values[self._batch_indices, best_actions_indices]
         # Set y_j to r_j for terminals, otherwise to r_j + GAMMA * max(Q)
-        next_q_values = torch.cat(tuple(
-            reward_batch[i] if terminal_batch[i] else reward_batch[i] + GAMMA * torch.max(output_1_batch[i])
-            for i in range(len(terminal_batch))
-        )).double()
+        next_q_values = reward_batch + (GAMMA * next_q_values * (1 - terminal_batch))
 
         self._optimizer.zero_grad()
-        # Detach so that we do not minimize the target net
-        next_q_values = next_q_values.detach()
         # False
         loss = self._criterion(q_values, next_q_values)
         self._loss_hist.append(loss.item())
@@ -103,20 +99,20 @@ class Agent():
             if DISPLAY_SCREEN:
                 self._env.render(mode='human')
             # Select new action every k frames
-            if n_frames % K_SKIP_FRAMES == 0:
-                if random.random() < self._epsilon:
-                    # Random action
-                    self._last_action = random.randint(0, N_ACTIONS - 1)
-                else:
-                    # Get output from nn applied on last k preprocessed frames
-                    with torch.no_grad():
-                        output = self._policy_net(self._env.get_state())
-                    self._last_action = int(torch.argmax(output))
+            # if n_frames % K_SKIP_FRAMES == 0:
+            if random.random() < self._epsilon:
+                # Random action
+                self._last_action = random.randint(0, N_ACTIONS - 1)
+            else:
+                # Get output from nn applied on last k preprocessed frames
+                with torch.no_grad():
+                    output = self._policy_net(self._env.get_state())
+                self._last_action = int(torch.argmax(output))
 
             # Play the selected action
             processed_new_frame, reward, terminal, terminal_life_lost = self._env.step(self._last_action + 1)
             episode_reward += reward
-            # Clipping the reward, even if I don't really see when the reward would be more than 1 or less than 0...
+            # Clipping the reward
             clipped_reward = 1 if reward > 0 else (-1 if reward < 0 else 0)
 
             # Save transition to replay memory

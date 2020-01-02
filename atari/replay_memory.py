@@ -16,8 +16,8 @@ class ReplayMemory(object):
         self._device = device
 
         # Variables used to store the transitions
-        self._actions = np.empty([RM_CAPACITY, N_ACTIONS], dtype=np.uint8)
-        self._rewards = np.empty([RM_CAPACITY, 1], dtype=np.float32)
+        self._actions = np.empty(RM_CAPACITY, dtype=np.uint8)
+        self._rewards = np.empty(RM_CAPACITY, dtype=np.float32)
         self._frames = np.empty((RM_CAPACITY, 84, 84), dtype=np.uint8)
         self._terminal_flags = np.empty(RM_CAPACITY, dtype=np.bool)
 
@@ -36,11 +36,9 @@ class ReplayMemory(object):
         :param reward: The resulting reward
         :param terminal: If the state was final or not
         """
-        act = [0.] * N_ACTIONS
-        act[action] = 1.
-        self._actions[self._current_id, ...] = act
+        self._actions[self._current_id] = action
         self._frames[self._current_id, ...] = frame
-        self._rewards[self._current_id, 0] = reward
+        self._rewards[self._current_id] = reward
         self._terminal_flags[self._current_id] = terminal
         self._count = max(self._count, self._current_id + 1)
         self._current_id = (self._current_id + 1) % RM_CAPACITY
@@ -84,7 +82,7 @@ class ReplayMemory(object):
             - A double torch tensor on the selected device that contains the actions
             - A double torch tensor on the selected device that contains the rewards
             - A double torch tensor on the selected device that contains the next states
-            - A list that contains the terminal flags
+            - A double torch tensor on the selected device that contains the terminal flags
         """
         if self._count < K_SKIP_FRAMES:
             raise ValueError('Not enough memories to get a minibatch')
@@ -97,10 +95,10 @@ class ReplayMemory(object):
 
         # Cast to double tensors on selected device before returning
         return torch.from_numpy(self._states).double().to(self._device), \
-               torch.from_numpy(self._actions[self._indices]).double().to(self._device), \
+               torch.from_numpy(self._actions[self._indices]).to(self._device), \
                torch.from_numpy(self._rewards[self._indices]).double().to(self._device), \
                torch.from_numpy(self._next_states).double().to(self._device),\
-               self._terminal_flags[self._indices].tolist()
+               torch.from_numpy(self._terminal_flags[self._indices]).double().to(self._device)
 
     def __len__(self):
         return self._count
