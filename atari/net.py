@@ -11,22 +11,32 @@ class Net(nn.Module):
         self._heavy_model = heavy_model
         out_1 = 16 * (heavy_model + 1)
         fc_hidden = 256 * (heavy_model + 1)
+
         # Initialize Torch variable of the first conv layer
         self.conv_1 = torch.nn.Conv2d(in_channels=4, out_channels=out_1, kernel_size=8, stride=4, padding=0)
         self._init_weights(self.conv_1.weight)
+
         # Initialize Torch variable of the second conv layer
         self.conv_2 = torch.nn.Conv2d(in_channels=out_1, out_channels=out_1*2, kernel_size=4, stride=2, padding=0)
         self._init_weights(self.conv_2.weight)
+
         if heavy_model:
             # Initialize Torch variable of the third conv layer, add a padding of 1 to keep same dimensions
             self.conv_3 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1)
             self._init_weights(self.conv_3.weight)
-        # Initialize Torch variable of the first linear layers
-        self.linear_1 = torch.nn.Linear(9 * 9 * out_1 * 2, fc_hidden)
-        self._init_weights(self.linear_1.weight)
+
+        # Initialize Torch variable of the adv hidden layer
+        self.h_adv = torch.nn.Linear(9 * 9 * out_1 * 2, fc_hidden)
+        self._init_weights(self.h_adv.weight)
+
+        # Initialize Torch variable of the v hidden layer
+        self.h_v = torch.nn.Linear(9 * 9 * out_1 * 2, fc_hidden)
+        self._init_weights(self.h_v.weight)
+
         # Initialize Torch variable of the adv layer
         self.adv = torch.nn.Linear(fc_hidden, N_ACTIONS)
         self._init_weights(self.adv.weight)
+
         # Initialize Torch variable of the v layer
         self.v = torch.nn.Linear(fc_hidden, 1)
         self._init_weights(self.v.weight)
@@ -61,20 +71,18 @@ class Net(nn.Module):
     def forward(self, x):
         # conv, relu, max pool, conv, relu, max pool, fc, relu, dropout, fc
         # x : 84x84x4
-        x = self.conv_1(x)
-        x = F.relu(x)
+        x = F.relu(self.conv_1(x))
         # x : 20x20x32
-        x = self.conv_2(x)
-        x = F.relu(x)
+        x = F.relu(self.conv_2(x))
         # x : 9x9x64
         if self._heavy_model:
-            x = self.conv_3(x)
-            x = F.relu(x)
+            x = F.relu(self.conv_3(x))
             # x : 9x9x64
         x = x.reshape(x.size(0), -1)
-        x = self.linear_1(x)
-        x = F.relu(x)
-        adv = self.adv(x)
-        v = self.v(x)
+        adv = self.adv(F.relu(self.h_adv(x)))
+        v = self.v(F.relu(self.h_v(x)))
         q = v + (adv - torch.mean(adv, dim=1, keepdim=True))
+        # https://github.com/Kaixhin/Rainbow/blob/master/model.py
+        # print(q)
+        # q = F.log_softmax(q, dim=0)
         return q

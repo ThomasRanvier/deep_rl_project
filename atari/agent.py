@@ -55,7 +55,7 @@ class Agent():
         next_q_values = reward_batch + (GAMMA * next_q_values * (1 - terminal_batch))
 
         self._optimizer.zero_grad()
-        # False
+        # q_values has grad activated, next_q_values doesn't, so only _policy_net will be optimized
         loss = self._criterion(q_values, next_q_values)
         self._loss_hist.append(loss.item())
         # Back propagation
