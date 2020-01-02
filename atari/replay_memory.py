@@ -22,8 +22,8 @@ class ReplayMemory(object):
         self._terminal_flags = np.empty(RM_CAPACITY, dtype=np.bool)
 
         # Variables used to return the minibatches
-        self._states = np.empty((MINIBATCH_SIZE, K_SKIP_FRAMES, 84, 84), dtype=np.uint8)
-        self._next_states = np.empty((MINIBATCH_SIZE, K_SKIP_FRAMES, 84, 84), dtype=np.uint8)
+        self._states = np.empty((MINIBATCH_SIZE, K_SKIP_FRAMES, 84, 84), dtype=np.float32)
+        self._next_states = np.empty((MINIBATCH_SIZE, K_SKIP_FRAMES, 84, 84), dtype=np.float32)
         self._indices = np.empty(MINIBATCH_SIZE, dtype=np.int32)
 
     def add_experience(self, action, frame, reward, terminal):
@@ -46,13 +46,16 @@ class ReplayMemory(object):
     def _get_state(self, index):
         """
         Return the corresponding state from the memory, a state is composed from four frames
+        Normalize the frames at that moment to save memory, since the frames are stored as np.uint8
 
         :param index: Index of the state
         :return: The four frames of the state
         """
         if index < K_SKIP_FRAMES - 1:
             raise ValueError('Index must be min ' + str(K_SKIP_FRAMES - 1))
-        return self._frames[index - K_SKIP_FRAMES + 1:index + 1, ...]
+        state = self._frames[index - K_SKIP_FRAMES + 1:index + 1, ...]
+        state = state / 255.
+        return state
 
     def _get_valid_indices(self):
         """

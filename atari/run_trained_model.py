@@ -7,7 +7,7 @@ MEAN_K = 10
 DISPLAY = True
 DYNAMIC = False
 SAVE_GIF = False
-MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs64_tu2500_it3500000_g0.999_ed0.42857142857142855_c1900000.pt'
+MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs64_tu2500_it3500000_g0.999_ed0.42857142857142855_c2900000.pt'
 
 def run_episode(net, env):
     env.reset()
