@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 
-filepath = 'logs/dueling.out'
+#filepath = 'logs/dueling.out'
+filepath = 'logs/b32_ed1._.1_.1_g.99.out'
 f = open(filepath)
 line = f.readline()
 i = 1
