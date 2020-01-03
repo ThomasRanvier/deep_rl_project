@@ -1,7 +1,10 @@
 import matplotlib.pyplot as plt
+import sys
 
 #filepath = 'logs/dueling.out'
-filepath = 'logs/b32_ed1._.1_.1_g.99.out'
+#filepath = 'logs/b32_ed1._.1_.1_g.99.out'
+filepath = sys.argv[1]
+max_loss_value = float(sys.argv[2])
 f = open(filepath)
 line = f.readline()
 i = 1
@@ -21,8 +24,8 @@ while line:
         rew.append(float(words[7]))
         rew_sum += float(words[7])
         eps.append(float(words[10]))
-        los.append(min(.4, float(words[13])))
-        los_sum += min(.4, float(words[13]))
+        los.append(min(max_loss_value, float(words[13])))
+        los_sum += min(max_loss_value, float(words[13]))
         ep.append(i - 2)
         if (i - 3) % mean_k == mean_k - 1:
             rew_mean.append(rew_sum / mean_k)
