@@ -3,7 +3,7 @@ K_SKIP_FRAMES = 4
 MINIBATCH_SIZE = 32# Useless to go above 32
 N_ITERATIONS = 4500000
 RM_CAPACITY = 1000000# 1 million in run with lr00001
-RM_START_SIZE = 50000
+RM_START_SIZE = 50#000
 # Implementing the epsilon annealing steps 1 and 2, DeepMind then keeps epsilon=.1 after annealing, however, we chose to decrease it to epsilon=.01 over the remaining frames as suggested by the OpenAi Baselines for DQN
 INITIAL_EPSILON = 1.
 MINIMAL_EPSILON_1 = .14
