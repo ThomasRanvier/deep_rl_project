@@ -7,7 +7,14 @@ MEAN_K = 10
 DISPLAY = True
 DYNAMIC = False
 SAVE_GIF = False
-MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs64_tu2500_it3500000_g0.999_ed0.42857142857142855_c2900000.pt'
+# /!\ remove state normalization !!!
+#MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs64_tu2500_it3500000_g0.999_ed0.42857142857142855_c3000000.pt'
+
+# Very good model... for us... reward: 27 /!\ remove state normalization !!!
+#MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs32_tu2500_it4500000_g0.99_ed0.3333333333333333_c1700000.pt'
+
+# /!\ remove state normalization !!!
+MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs32_tu2500_it4500000_g0.99_ed0.3333333333333333_c1800000.pt'
 
 def run_episode(net, env):
     env.reset()

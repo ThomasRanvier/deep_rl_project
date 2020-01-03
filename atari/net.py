@@ -9,6 +9,7 @@ class Net(nn.Module):
     def __init__(self, heavy_model = False):
         super(Net, self).__init__()
         self._heavy_model = heavy_model
+
         out_1 = 16 * (heavy_model + 1)
         fc_hidden = 256 * (heavy_model + 1)
 
@@ -83,6 +84,5 @@ class Net(nn.Module):
         v = self.v(F.relu(self.h_v(x)))
         q = v + (adv - torch.mean(adv, dim=1, keepdim=True))
         # https://github.com/Kaixhin/Rainbow/blob/master/model.py
-        # print(q)
         # q = F.log_softmax(q, dim=0)
         return q
