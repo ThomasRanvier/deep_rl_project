@@ -15,7 +15,7 @@ SAVE_GIF = False
 
 # /!\ remove state normalization !!!
 MODEL_PATH = 'saved_models/policy_net_lr6.25e-05_bs32_tu2500_it4500000_g0.99_ed0.3333333333333333_c1800000.pt'
-
+MODEL_PATH = 'saved_models/policy_net_lr1e-05_bs32_tu2500_it4500000_g0.99_ed0.2777777777777778_c1250000.pt'
 def run_episode(net, env):
     env.reset()
     episode_reward = 0
