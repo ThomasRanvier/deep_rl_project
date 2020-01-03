@@ -93,30 +93,32 @@ class Agent():
         episode_reward = 0
         # Initialize episode variables
         terminal = False
+        terminal_life_lost = False
         n_frames = 0
         self._loss_hist = []
         while not terminal:
             if DISPLAY_SCREEN:
                 self._env.render(mode='human')
             # Select new action every k frames
-            # if n_frames % K_SKIP_FRAMES == 0:
-            if random.random() < self._epsilon:
-                # Random action
-                self._last_action = random.randint(0, N_ACTIONS - 1)
-            else:
-                # Get output from nn applied on last k preprocessed frames
-                with torch.no_grad():
-                    output = self._policy_net(self._env.get_state())
-                self._last_action = int(torch.argmax(output))
+            if n_frames % K_SKIP_FRAMES == 0:
+                if random.random() < self._epsilon:
+                    # Random action
+                    self._last_action = random.randint(0, N_ACTIONS - 1)
+                else:
+                    # Get output from nn applied on last k preprocessed frames
+                    with torch.no_grad():
+                        output = self._policy_net(self._env.get_state())
+                    self._last_action = int(torch.argmax(output))
 
-            # Play the selected action
-            processed_new_frame, reward, terminal, terminal_life_lost = self._env.step(self._last_action + 1)
+            played_action = 0 if terminal_life_lost else self._last_action
+            # Play the selected action, fire if just lost a life
+            processed_new_frame, reward, terminal, terminal_life_lost = self._env.step(played_action + 1)
             episode_reward += reward
             # Clipping the reward
             clipped_reward = 1 if reward > 0 else (-1 if reward < 0 else 0)
 
             # Save transition to replay memory
-            self._rm.add_experience(self._last_action, processed_new_frame, clipped_reward, terminal_life_lost)
+            self._rm.add_experience(played_action, processed_new_frame, clipped_reward, terminal_life_lost)
 
             # Optimize the nn every k frames
             if n_frames % K_SKIP_FRAMES == K_SKIP_FRAMES - 1:

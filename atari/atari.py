@@ -1,3 +1,4 @@
+import numpy as np
 import gym
 import random
 import torch
@@ -78,7 +79,8 @@ class Atari(object):
         """
         Process the k last frames to an unsqueezed tensor on the selected device and return it as the current state
         """
-        return torch.tensor(self._last_k_frames, dtype=torch.float64, device=self._device).unsqueeze(0)
+        state = np.array(self._last_k_frames) / 255.
+        return torch.tensor(state, dtype=torch.float64, device=self._device).unsqueeze(0)
 
     def render(self, mode = 'human'):
         if mode == 'human':
