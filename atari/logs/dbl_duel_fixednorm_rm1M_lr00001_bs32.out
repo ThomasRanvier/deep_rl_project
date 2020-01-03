@@ -5271,3 +5271,10 @@ Ep 5268 - ite 1355606/4500000 - reward 7 - eps 0.14 - loss 0.000901 - rm load 10
 Ep 5269 - ite 1356067/4500000 - reward 10 - eps 0.14 - loss 0.000792 - rm load 100.00% - uptime 649.97m - remaining 1506.91m
 Ep 5270 - ite 1356502/4500000 - reward 8 - eps 0.14 - loss 0.000915 - rm load 100.00% - uptime 650.21m - remaining 1506.76m
 Ep 5271 - ite 1357048/4500000 - reward 15 - eps 0.14 - loss 0.000974 - rm load 100.00% - uptime 650.51m - remaining 1506.59m
+Ep 5272 - ite 1357370/4500000 - reward 5 - eps 0.14 - loss 0.000815 - rm load 100.00% - uptime 650.69m - remaining 1506.49m
+Ep 5273 - ite 1357895/4500000 - reward 12 - eps 0.14 - loss 0.000749 - rm load 100.00% - uptime 650.99m - remaining 1506.35m
+Ep 5274 - ite 1358358/4500000 - reward 8 - eps 0.14 - loss 0.000738 - rm load 100.00% - uptime 651.24m - remaining 1506.20m
+Ep 5275 - ite 1358816/4500000 - reward 8 - eps 0.14 - loss 0.000894 - rm load 100.00% - uptime 651.49m - remaining 1506.05m
+Ep 5276 - ite 1359228/4500000 - reward 7 - eps 0.14 - loss 0.000741 - rm load 100.00% - uptime 651.71m - remaining 1505.91m
+Ep 5277 - ite 1359644/4500000 - reward 7 - eps 0.14 - loss 0.000801 - rm load 100.00% - uptime 651.94m - remaining 1505.77m
+Ep 5278 - ite 1360158/4500000 - reward 14 - eps 0.14 - loss 0.000918 - rm load 100.00% - uptime 652.22m - remaining 1505.61m
