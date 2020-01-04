@@ -25,7 +25,7 @@ MODELS_DIR = 'saved_models/'
 FILE_SUFFIX = 'lr' + str(LEARNING_RATE) + '_bs' + str(MINIBATCH_SIZE) + '_tu' + str(TARGET_UPDATE) + '_it' + \
               str(N_ITERATIONS) + '_g' + str(GAMMA) + '_ed' + str(EPS_DECAY_FRACTION_1)
 SAVE_EVERY = 50000
-SAVE_MODELS = [i for i in range(EPS_DECAY_STEPS_1, N_ITERATIONS - SAVE_EVERY + 1, SAVE_EVERY)]
+SAVE_MODELS = [i for i in range(1000000, N_ITERATIONS - SAVE_EVERY + 1, SAVE_EVERY)]
 N_NO_OP = 20# The agent performs between 1 and N_NO_OP NO_OP_ACTIONs at the start of each episode, point being to start in different situations
 NO_OP_ACTION = 1# We choose the fire action so that the ball is launched, once in the game it does nothing anymore
 # https://github.com/fg91/Deep-Q-Learning/blob/master/DQN.ipynb
