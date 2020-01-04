@@ -115,7 +115,7 @@ class Agent():
             processed_new_frame, reward, terminal, terminal_life_lost = self._env.step(played_action + 1)
             episode_reward += reward
             # Clipping the reward
-            clipped_reward = 1 if reward > 0 else (-1 if reward < 0 else 0)
+            clipped_reward = reward# 1 if reward > 0 else (-1 if reward < 0 else 0)
 
             # Save transition to replay memory
             self._rm.add_experience(played_action, processed_new_frame, clipped_reward, terminal_life_lost)
