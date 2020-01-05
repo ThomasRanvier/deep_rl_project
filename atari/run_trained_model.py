@@ -1,17 +1,13 @@
 import matplotlib.pyplot as plt
 import torch
 from atari import Atari
+import sys
 
 N_EPISODES = 1
 MEAN_K = 10
 DISPLAY = False
 DYNAMIC = False
 SAVE_GIF = True
-
-#MODEL_PATH = 'best_models/rewclip_lr0000625/model.pt'
-
-# No reward clip bs32 g99
-MODEL_PATH = '../../backup_models/norewardclip_norm_dbl_duel_g99_bs32_lr0000625/policy_net_lr6.25e-05_bs32_tu2500_it4500000_g0.99_ed0.2777777777777778_c2250000.pt'
 
 def run_episode(net, env):
     env.reset()
@@ -32,7 +28,8 @@ def run_episode(net, env):
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    policy_net = torch.load(MODEL_PATH).double()
+    model_path = sys.argv[1]
+    policy_net = torch.load(model_path).double()
     policy_net.eval()
     env = Atari(device, save_gif=SAVE_GIF)
     ep = []
