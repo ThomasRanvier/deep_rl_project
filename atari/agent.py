@@ -100,15 +100,15 @@ class Agent():
             if DISPLAY_SCREEN:
                 self._env.render(mode='human')
             # Select new action every k frames
-            if n_frames % K_SKIP_FRAMES == 0:
-                if random.random() < self._epsilon:
-                    # Random action
-                    self._last_action = random.randint(0, N_ACTIONS - 1)
-                else:
-                    # Get output from nn applied on last k preprocessed frames
-                    with torch.no_grad():
-                        output = self._policy_net(self._env.get_state())
-                    self._last_action = int(torch.argmax(output))
+            #if n_frames % K_SKIP_FRAMES == 0:
+            if random.random() < self._epsilon:
+                # Random action
+                self._last_action = random.randint(0, N_ACTIONS - 1)
+            else:
+                # Get output from nn applied on last k preprocessed frames
+                with torch.no_grad():
+                    output = self._policy_net(self._env.get_state())
+                self._last_action = int(torch.argmax(output))
 
             played_action = 0 if terminal_life_lost else self._last_action
             # Play the selected action, fire if just lost a life
