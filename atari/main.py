@@ -34,8 +34,8 @@ if __name__ == '__main__':
     print('Total iterations: {} - rm capacity: {} - bs: {}'
           .format(N_ITERATIONS, RM_CAPACITY, MINIBATCH_SIZE), flush=True)
     rm = ReplayMemory(device)
-    policy_net = Net(heavy_model=True).double().to(device)
-    #policy_net = torch.load('best_models/rewclip_lr0000625/model.pt').double().to(device)
+    #policy_net = Net(heavy_model=True).double().to(device)
+    policy_net = torch.load('best_models/rewclip_lr0000625/model.pt').double().to(device)
     target_net = Net(heavy_model=True).double().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
