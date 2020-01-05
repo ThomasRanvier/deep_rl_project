@@ -4,14 +4,14 @@ from atari import Atari
 
 N_EPISODES = 1
 MEAN_K = 10
-DISPLAY = True
+DISPLAY = False
 DYNAMIC = False
-SAVE_GIF = False
+SAVE_GIF = True
 
-MODEL_PATH = 'best_models/rewclip_lr0000625/model.pt'
+#MODEL_PATH = 'best_models/rewclip_lr0000625/model.pt'
 
 # No reward clip bs32 g99
-#MODEL_PATH = '../../backup_models/norewardclip_norm_dbl_duel_g99_bs32_lr0000625/policy_net_lr6.25e-05_bs32_tu2500_it4500000_g0.99_ed0.2777777777777778_c1350000.pt'
+MODEL_PATH = '../../backup_models/norewardclip_norm_dbl_duel_g99_bs32_lr0000625/policy_net_lr6.25e-05_bs32_tu2500_it4500000_g0.99_ed0.2777777777777778_c2250000.pt'
 
 def run_episode(net, env):
     env.reset()
