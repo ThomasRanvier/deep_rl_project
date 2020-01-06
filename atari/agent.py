@@ -16,7 +16,8 @@ class Agent():
         self._criterion = criterion
         self._env = env
         self._last_action = random.randint(0, N_ACTIONS - 1)
-        self._epsilon = INITIAL_EPSILON
+        self._current_epsilon_id = 0
+        self._epsilon = EPS_VALUES[self._current_epsilon_id]
         self._iteration = 0
         self._loss_hist = []
         self._epsilon_hist = []
@@ -75,11 +76,10 @@ class Agent():
             torch.save(self._policy_net, MODELS_DIR + 'policy_net_' + FILE_SUFFIX + '_c' + str(self._iteration) + '.pt')
 
         # Update epsilon every params update (starts updating after RM_START_SIZE)
-        eps_1 = max(MINIMAL_EPSILON_1, self._epsilon - EPSILON_ANNEALING_STEP_1)
-        if eps_1 < self._epsilon:
-            self._epsilon = eps_1
-        else:
-            self._epsilon = max(MINIMAL_EPSILON_2, self._epsilon - EPSILON_ANNEALING_STEP_2)
+        if self._current_epsilon_id < len(EPS_TRIGGERS):
+            if self._iteration == EPS_TRIGGERS[self._current_epsilon_id]:
+                self._current_epsilon_id += 1
+        self._epsilon = self._epsilon + EPS_STEPS[self._current_epsilon_id]
 
     def _increment_iteration(self):
         self._iteration += 1
