@@ -55,8 +55,10 @@ if __name__ == '__main__':
     ax2 = ax1.twinx()
     iterations = 0
     episode = 1
-    init_start = time.time()
+    init_start = None
     while iterations < N_ITERATIONS:
+        if init_start == None and iterations >= RM_START_SIZE * K_SKIP_FRAMES:
+            init_start = time.time()
         epsilon_y, episode_loss, iterations, episode_reward = agent.run_episode()
         end = time.time()
         episode_x.append(iterations)
@@ -65,11 +67,12 @@ if __name__ == '__main__':
         iterations_x.extend(list(range(len(iterations_x) + 1, iterations + 1)))
         if VERBOSE:
             total_estimated_time = ((end - init_start) / iterations) * N_ITERATIONS
-            remaining_estimation = (total_estimated_time - (end - init_start)) / 60
+            remaining_estimation = 0 if init_start == None else (total_estimated_time - (end - init_start)) / 60
+            uptime = 0 if init_start == None else init_start = time.time()
             print(
                 'Ep {5} - ite {0}/{1} - reward {2} - eps {3:.4f} - loss {8:.6f} - rm load {4:.2f}% - uptime {6:.2f}m - remaining {7:.2f}m'
-                    .format(iterations, N_ITERATIONS, int(round(episode_reward)), epsilon_y[-1], 100. * rm._count / RM_CAPACITY,
-                            episode, (end - init_start) / 60, remaining_estimation, episode_loss), flush=True)
+                    .format(iterations, N_ITERATIONS, int(round(episode_reward)), epsilon_y[-1], 100. * len(rm) / RM_CAPACITY,
+                            episode, uptime, remaining_estimation, episode_loss), flush=True)
         if DYNAMIC_PLOT:
             display_plot(iterations_x, loss_y, epsilon_y, episode_x, reward_y, ax1=ax1, ax2=ax2, ax3=ax3, fig=fig)
         episode += 1
