@@ -68,7 +68,7 @@ if __name__ == '__main__':
         if VERBOSE:
             total_estimated_time = ((end - init_start) / iterations) * N_ITERATIONS
             remaining_estimation = 0 if init_start == None else (total_estimated_time - (end - init_start)) / 60
-            uptime = 0 if init_start == None else init_start = time.time()
+            uptime = 0 if init_start == None else end - init_start
             print(
                 'Ep {5} - ite {0}/{1} - reward {2} - eps {3:.4f} - loss {8:.6f} - rm load {4:.2f}% - uptime {6:.2f}m - remaining {7:.2f}m'
                     .format(iterations, N_ITERATIONS, int(round(episode_reward)), epsilon_y[-1], 100. * len(rm) / RM_CAPACITY,
